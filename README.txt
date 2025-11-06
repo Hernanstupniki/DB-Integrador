@@ -228,3 +228,22 @@ CALL sp_refinanciar_credito(<id_credito_original>, 250000, 18, 74.000);
   SHOW GRANTS FOR 'gestor_cobranza'@'localhost';
   ```
 
+---
+
+## 📄 Licencia
+
+MIT — usalo, modificalo y compartilo libremente.
+Si te sirvió, dejá ⭐ en el repo 😉
+
+---
+
+## 🗺️ Roadmap (ideas)
+
+* Vistas materializadas/ETL para KPIs (PAR30/60/90, roll rate).
+* Políticas de **reestructuración** y condonación parcial.
+* Webhooks/colas para notificaciones de vencimientos.
+* Tests automatizados (p.ej., con Docker + `mysql:8`).
+
+---
+
+¿Querés que agregue un **`seed.sql`** con datos de ejemplo y queries de reporte (morosidad por sucursal, aging, etc.)? Te lo preparo.
