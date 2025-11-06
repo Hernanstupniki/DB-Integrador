@@ -229,21 +229,217 @@ CALL sp_refinanciar_credito(<id_credito_original>, 250000, 18, 74.000);
   ```
 
 ---
+`seed_02.sql` (Datos masivos)
 
-## 📄 Licencia
-
-MIT — usalo, modificalo y compartilo libremente.
-Si te sirvió, dejá ⭐ en el repo 😉
+**Proyecto:** Sistema de Gestión de Créditos y Cobranzas
+**Compatibilidad:** MySQL 8.x
+**Relacionado con:** `esquema_01.sql` (DDL completo)
 
 ---
 
-## 🗺️ Roadmap (ideas)
+## ¿Qué hace este seed?
 
-* Vistas materializadas/ETL para KPIs (PAR30/60/90, roll rate).
-* Políticas de **reestructuración** y condonación parcial.
-* Webhooks/colas para notificaciones de vencimientos.
+`seed_02.sql` carga **datos masivos y realistas** en todas las tablas del esquema creado por `esquema_01.sql`, cumpliendo el requisito de **≥ 60 registros por tabla** (en la mayoría, mucho más). Además, dispara y valida la **lógica de negocio** implementada por **índices**, **triggers**, **procedimientos** y **funciones** definidas en el esquema.
+
+### Resumen de volúmenes (orientativo)
+
+* `provincias`: 60
+* `sucursales`: 80
+* `empleados`: 300
+* `campanias_promocionales`: 60
+* `clientes`: 500
+* `productos_financieros`: 60
+* `historico_tasas`: 180 (3 por producto, con vigencias encadenadas)
+* `garantes`: 300
+* `solicitudes_credito`: 600
+* `solicitudes_garantes`: ≥ 600 (1 o 2 garantes por solicitud)
+* `creditos`: ≈ solicitudes **Aprobadas**
+* `cuotas`: generadas por **SP** (plan francés) para *todos* los créditos
+* `pagos`: múltiples casos (al día, con mora, parciales)
+* `penalizaciones`: generadas automáticamente cuando hay mora
+* `evaluaciones_seguimiento`: 200
+* `campanias_productos`: 180
+* `auditoria_tasas`: auditoría por triggers al insertar/actualizar histórico
+
+---
+
+## Dependencias y orden de ejecución
+
+1. Ejecutar **`esquema_01.sql`** primero (crea BD, tablas, índices, funciones, procedimientos, triggers y usuarios).
+2. Luego, ejecutar **`seed_02.sql`**.
+
+> Si re-ejecutás el seed, él mismo limpia las tablas en orden seguro (respeta FKs) y vuelve a poblar todo.
+
+---
+
+## Cómo funciona internamente
+
+### 1) Generación masiva y reproducible
+
+* Crea una tabla auxiliar `helper_seq` con una **secuencia 1..5000 sin CTEs** (compatible y rápida).
+* A partir de esa secuencia, genera datos **deterministas** y **consistentes** con `MOD`, offsets, y permutaciones coprimas para distribuir entidades (clientes ↔ sucursales ↔ empleados ↔ productos) evitando duplicados en claves compuestas.
+
+### 2) Carga por tabla (y reglas de negocio)
+
+* **Provincias / Sucursales / Empleados / Campañas / Clientes / Productos**:
+  Datos sintéticos variados (fechas, montos, estados). En `clientes` se normalizan `provincia`/`ciudad` por los **triggers** `trg_clientes_bi` y `trg_clientes_bu` (trim/espacios), y se usan columnas virtuales `*_norm` para los índices de búsqueda.
+
+* **Histórico de tasas (`historico_tasas`)**:
+  Inserta 3 cambios por producto y **encadena vigencias** (`vigente_desde / vigente_hasta`).
+  **Conexión con funciones:** `fn_tasa_vigente(id_producto, fecha)` consulta este histórico para devolver la tasa vigente a una fecha.
+  **Conexión con triggers:** `trg_hist_insert` y `trg_hist_update` registran en `auditoria_tasas` cada cambio.
+
+* **Garantes** y **Solicitudes**:
+  Asigna **al menos 1 garante por solicitud** (y un segundo garante en ~30%).
+  `solicitudes_credito` elige el **gestor** (cargo `Atencion_Cliente`) y el **analista** (cargo `Analista_Credito`) con un reparto uniforme usando `ROW_NUMBER()` en subconsultas derivadas (sin CTEs).
+
+* **Créditos**:
+  Se crean **sólo** para solicitudes `Aprobada`.
+  La **tasa aplicada** se obtiene con `fn_tasa_vigente`, dejando lista la entrada para generar cuotas.
+
+* **Cuotas**:
+  Para **cada crédito**, el seed llama al **procedimiento** `sp_generar_cuotas` (plan francés), dentro de un cursor (`sp_seed_generar_cuotas_all`) que recorre todos los créditos.
+  **Control de errores:** `sp_generar_cuotas` maneja transacciones y `SQLEXCEPTION` (ROLLBACK + `SIGNAL`).
+
+* **Pagos** (y **Penalizaciones**):
+  Se simulan tres escenarios:
+
+  1. Primera cuota pagada **al día** (50%)
+     *Se usa una **tabla temporal** para evitar el error 1442* (ver abajo).
+  2. Primera cuota pagada **con mora** (50%)
+     Llama a `sp_registrar_pago`, que:
+
+     * Calcula días de demora,
+     * Inserta `pagos`,
+     * Genera **penalización** con `fn_calcular_mora` si corresponde,
+     * Actualiza estado de la cuota.
+       **Control de errores:** transacción + `SQLEXCEPTION`.
+  3. Segunda cuota pagada **al día** para ~30% de créditos (otra tabla temporal).
+
+  **Conexión con triggers:**
+
+  * `trg_pago_calcular_demora` (BEFORE INSERT en `pagos`) calcula automáticamente `dias_demora`.
+  * `trg_pago_actualiza_cuota` (AFTER INSERT en `pagos`) refresca el **estado** de la cuota según pagos/fechas.
+  * `trg_cuota_actualiza_credito` (AFTER UPDATE en `cuotas`) recalcula el **estado** del crédito (Pagado / En_Mora / Activo) en función del set de cuotas.
+
+* **Evaluaciones de seguimiento**:
+  Inserta 200 evaluaciones asociando cliente–crédito–analista. El **nivel de endeudamiento** se calcula con una razón (deuda/ingresos) y se registran observaciones/recomendaciones variadas.
+
+* **Campañas–Productos** (`campanias_productos`):
+  Se generan 180 filas usando una **permutación coprima** y **offset por ciclo** para **evitar duplicados** en la **PK compuesta**. (Soluciona el conflicto típico `Duplicate entry '1-7'`).
+
+### 3) ¿Por qué tablas temporales en pagos?
+
+Para evitar el **Error 1442** (“no se puede actualizar la misma tabla usada en el statement que disparó el trigger”).
+El patrón es:
+
+1. Seleccionar las cuotas objetivo a una **tabla temporal**.
+2. Hacer `INSERT INTO pagos ... SELECT ... FROM tabla_temporal` (así el trigger puede actualizar `cuotas` sin que sea la misma sentencia que la está leyendo).
+
+### 4) Fechas seguras (límite 2038)
+
+Las columnas `TIMESTAMP` de MySQL tienen límite práctico (year 2038). El seed **“clamp”** las fechas de `historico_tasas.fecha_cambio` a `2037-12-31` para evitar `Incorrect datetime value` en ambientes con zona horaria/restricciones.
+
+---
+
+## Conexión con objetos del esquema
+
+* **Funciones**
+
+  * `fn_tasa_vigente(p_id_producto, p_fecha)` → usada al crear **créditos** para fijar la tasa.
+  * `fn_calcular_mora(monto, dias, tasa_diaria)` → usada por `sp_registrar_pago` para **penalizaciones**.
+
+* **Procedimientos**
+
+  * `sp_generar_cuotas(p_id_credito)` → llamado por el seed para **todos** los créditos.
+  * `sp_registrar_pago(p_id_cuota,...)` → llamado por el seed para pagos **con mora** (genera penalización y actualiza estados).
+  * (Temporales del seed) `sp_seed_generar_cuotas_all` y `sp_seed_pagar_mora_primera` → sólo existen durante el seed y se **droean** al final.
+
+* **Triggers**
+
+  * `trg_clientes_bi` / `trg_clientes_bu` → normalizan `provincia/ciudad` al insertar/actualizar `clientes`.
+  * `trg_hist_insert` / `trg_hist_update` → **auditan** movimientos de tasas.
+  * `trg_pago_calcular_demora` → calcula demora antes de insertar `pagos`.
+  * `trg_pago_actualiza_cuota` → mantiene `estado` de **cuotas** después de cada pago.
+  * `trg_cuota_actualiza_credito` → mantiene `estado` de **créditos** tras cambios en cuotas.
+
+---
+
+## Ejecución
+
+```sql
+-- 1) DDL
+SOURCE esquema_01.sql;
+
+-- 2) Datos
+SOURCE seed_02.sql;
+```
+
+Al finalizar, el seed ejecuta un **recuento por tabla** para que verifiques los mínimos.
+
+---
+
+## Ajustes rápidos (parametrización)
+
+* Cambiar **volúmenes**: modificar los `WHERE n <= ...` en cada bloque (`clientes`, `solicitudes`, etc.).
+* Cambiar **proporciones**: por ejemplo, variar `%` de solicitudes `Aprobada` en el INSERT de `solicitudes_credito`.
+* Cambiar **mora**: ajustar la tasa diaria `0.0005` (0.05% diario) al llamar `sp_registrar_pago`.
+* Más pagos: duplicar bloques **a/b/c** con otras cuotas y condiciones (usando SIEMPRE tablas temporales si hay triggers sobre esas tablas).
+
+---
+
+## Errores comunes (y cómo los evitamos aquí)
+
+* **1062 Duplicate entry** en PK compuesta (`campanias_productos`) → resuelto con **permutación coprima + offset por ciclo**.
+* **1442** (“table is already used by statement which invoked this trigger”) → **tablas temporales** antes de insertar en `pagos`.
+* **1292 Incorrect datetime** por `TIMESTAMP` fuera de rango → **clamp** a `2037-12-31`.
+* **CTEs recursivos limitados** → secuencia 1..5000 generada **sin `WITH RECURSIVE`**.
+
+---
+
+## Verificación rápida
+
+Al final del seed se imprime un **SELECT** con el conteo por cada tabla. Además, podés validar reglas de negocio:
+
+```sql
+-- ¿Todas las solicitudes Aprobadas tienen crédito?
+SELECT COUNT(*) falta
+FROM solicitudes_credito s
+LEFT JOIN creditos c ON c.id_solicitud = s.id_solicitud
+WHERE s.estado='Aprobada' AND c.id_credito IS NULL;
+
+-- ¿Créditos en estado consistente con sus cuotas?
+SELECT c.id_credito, c.estado, 
+       SUM(cu.estado IN ('Pagada','Pagada_Con_Mora')) pagadas,
+       SUM(cu.estado = 'Vencida') vencidas,
+       COUNT(*) total
+FROM creditos c
+JOIN cuotas cu ON cu.id_credito=c.id_credito
+GROUP BY c.id_credito, c.estado
+LIMIT 10;
+```
+
+---
+
+## ¿Por qué no INSERTs “a mano” para todo?
+
+Porque acá hay **miles de registros** con **relaciones** y **reglas** (garantes, analistas, moras, auditorías, etc.). El seed generativo es:
+
+* **Rápido y reproducible**,
+* **Consistente** con FKs y estados,
+* Fácil de **escalar** (cambiar volúmenes y proporciones),
+* Seguro frente a **triggers** (tabla temporal) y **límites de fechas**.
+
+Para catálogos chicos y estáticos (p.ej., métodos de pago si fueran una tabla aparte), **sí** conviene INSERTs explícitos.
+
+---
+
+## Licencia y uso
+
+El seed es de **uso académico** y está pensado para pruebas de rendimiento, reportes y validación de la lógica de negocio del sistema de créditos y cobranzas.
+
+Si querés una variante con **más cuotas pagadas**, **más morosidad** o **perfiles por sucursal**, decime y te dejo un `seed_03.sql` parametrizado.
+
 * Tests automatizados (p.ej., con Docker + `mysql:8`).
 
----
 
-¿Querés que agregue un **`seed.sql`** con datos de ejemplo y queries de reporte (morosidad por sucursal, aging, etc.)? Te lo preparo.
