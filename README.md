@@ -1,245 +1,233 @@
-# 🔗 Modelo de Datos y Relaciones (explicado)
+# Sistema de Gestión de Créditos y Cobranzas — Guía completa (DB + relaciones + 3 archivos)
 
-## Visión general (dominios → core → marketing → auditoría)
+## Qué incluye
 
-```
+* **`esquema_01.sql`**: crea toda la base (`gestion_creditos`) con catálogos (DOM), geografía escalable (provincias/ciudades), core de negocio, marketing, penalidades, auditoría centralizada, funciones, SPs y triggers.
+* **`seed_02.sql`**: carga **datos demo masivos** (≥60 por tabla objetivo) de forma determinista y consistente con el esquema (incluye helper de secuencias, parches anti-solape de tasas y generación de cuotas/pagos).
+* **`queries_03.sql`**: set de **reportes, vistas y transacciones** (incluye “Top” sin `LIMIT` usando subconsultas/ventanas, vistas de trabajo y 3 transacciones típicas).
+
+---
+
+## Visión general del modelo
+
+```text
 [DOM catálogos]
-  dom_* (estados, tipos, métodos, cargos, etc.)
+  dom_* : estados, tipos, métodos, cargos, etc. (tablas maestras finitas, sin ENUM)
+    ├─ dom_estado_sucursal     ├─ dom_estado_empleado   ├─ dom_estado_cliente
+    ├─ dom_cargo_empleado      ├─ dom_situacion_laboral ├─ dom_tipo_producto
+    ├─ dom_estado_producto     ├─ dom_estado_campania   ├─ dom_estado_solicitud
+    ├─ dom_estado_credito      ├─ dom_estado_cuota      ├─ dom_metodo_pago
+    ├─ dom_estado_penalizacion └─ dom_comp_pago
 
-[GEO]
+[GEO escalable]
   provincias(1) ──< ciudades(N)
-         └──< sucursales(N)  (via id_provincia, id_ciudad)
-         └──< clientes(N)    (via id_provincia, id_ciudad; + columnas texto comp.)
+     ├─ sucursales(N)   (FK: id_provincia, id_ciudad + columnas texto compat.)
+     └─ clientes(N)     (FK: id_provincia, id_ciudad + columnas texto compat.)
 
-[NEGOCIO CORE]
-  clientes(1) ──< solicitudes_credito(N)
-  solicitudes_credito(1) ──< solicitudes_garantes(N) >──(1) garantes
-  solicitudes_credito(1) ──< creditos(N)
-  creditos(1) ──< cuotas(N)
-  cuotas(1) ──< pagos(N)
-  cuotas(1) ──< penalizaciones(N)
+[NEGOCIO core]
+  clientes(1) ──< solicitudes_credito(N) ──1─> productos_financieros
+                   └─< solicitudes_garantes(N) >─┐
+  garantes ───────────────────────────────────────┘
+  solicitudes_credito(1) ──< creditos(1..N) ──< cuotas(1..N) ──< pagos(0..N)
+                                               └─< penalizaciones(0..N)
 
-[PRODUCTOS Y TASAS]
-  dom_tipo_producto(1) ──< productos_financieros(N) ──< historico_tasas(N)
-
-[RRHH]
-  sucursales(1) ──< empleados(N) ──(1) dom_cargo_empleado
-  empleados(Analistas) ──< solicitudes_credito (como id_analista)
-  empleados(Analistas) ──< evaluaciones_seguimiento
-
-[MARKETING]
+[Marketing]
   campanias_promocionales
-      ├─< campanias_productos >─ productos_financieros    (N:M)
-      ├─< campanias_clientes    (N:M con id_cliente, fecha_contacto, canal, resultado)
-      └─ clientes(id_campania_ingreso)  (atribución first-convert wins)
+    ├─< campanias_productos (N:M con productos_financieros)
+    └─< campanias_clientes  (contactos y “conversiones” por fecha)
+  clientes.id_campania_ingreso  ← atribución primera conversión
 
-[AUDITORÍA]
-  auditoria_eventos (INSERT/UPDATE/DELETE de tablas clave)
-  auditoria_tasas   (cambios en historico_tasas)
+[Seguimiento]
+  evaluaciones_seguimiento (cliente/credito evaluado por analista, comp. pago)
+
+[Auditoría]
+  auditoria_eventos (auditoría centralizada INSERT/UPDATE/DELETE)
+  auditoria_tasas   (auditoria puntual de histórico de tasas)
 ```
 
 ---
 
-## Relaciones clave (con cardinalidad y por qué existen)
+## Relaciones clave (cardinalidades y FKs)
 
-### 1) Geografía escalable
+### Catálogos (DOM)
 
-* **provincias (1) ──< ciudades (N)**
-  Una provincia tiene muchas ciudades. FK: `ciudades.id_provincia`.
-* **provincias/ciudades ──< sucursales**
-  Cada sucursal se ubica en una ciudad/provincia. FKs: `sucursales.id_provincia`, `sucursales.id_ciudad`.
-  **Compatibilidad**: además guardamos `sucursales.ciudad` (texto) para seeds/históricos.
-* **provincias/ciudades ──< clientes**
-  Similar a sucursales, con FKs **y** columnas texto (`provincia`, `ciudad`) + columnas `GENERATED` normalizadas (`provincia_norm`, `ciudad_norm`) para búsquedas legacy.
+* Todas las tablas de negocio referencian IDs de DOM (p.ej., `creditos.id_estado → dom_estado_credito.id`).
+* **Invariantes**: dominios son finitos, con `is_deleted` para baja lógica y `codigo` único.
 
-> **Beneficio:** podés migrar de texto → FK **sin romper** datos antiguos. Además permite enriquecer (mapas, clusters, BI geográfico).
+### Geografía
 
----
+* `ciudades.id_provincia → provincias.id_provincia` (1:N).
+* `sucursales.id_provincia/id_ciudad` y `clientes.id_provincia/id_ciudad` → FKs a maestro geo.
+  Además, **columnas texto** `provincia/ciudad` en `clientes` y `ciudad` en `sucursales` para compatibilidad con seeds/imports; se normalizan con columnas *virtuales* `*_norm` e índices.
 
-### 2) Proceso de crédito (pipeline completo)
+### Negocio
 
-1. **clientes (1) ──< solicitudes_credito (N)**
-   Un cliente puede realizar múltiples solicitudes.
-   `solicitudes_credito` referencia:
+* `solicitudes_credito`:
 
-   * `id_sucursal`: dónde se gestionó.
-   * `id_empleado_gestor`: quién la tomó.
-   * `id_analista` (opcional hasta evaluar).
-   * `id_estado` (Pendiente, En_Revision, Aprobada, Rechazada – **dom_estado_solicitud**).
-   * **Reglas**: el trigger `trg_sol_no_aprobar_sin_garante` impide aprobar si no hay garantes.
+  * `id_cliente → clientes`, `id_sucursal → sucursales`, `id_producto → productos_financieros`.
+  * `id_empleado_gestor` y (opcional) `id_analista` → `empleados`.
+  * `id_estado → dom_estado_solicitud`.
+* `solicitudes_garantes`:
 
-2. **solicitudes_credito (1) ──< solicitudes_garantes (N) >── (1) garantes**
-   Relación **N:M** entre solicitudes y garantes materializada como `solicitudes_garantes`.
+  * **N:M** entre solicitudes y garantes. PK compuesta `(id_solicitud, id_garante)`.
+* `creditos`:
 
-   * Se puede exigir ≥1 garante para aprobar (validado por trigger y SPs).
+  * `id_solicitud`, `id_cliente`, `id_producto` (FKs) + `id_estado → dom_estado_credito`.
+  * `id_credito_refinanciado` (FK auto-referenciada) para encadenar refinanciaciones.
+* `cuotas`:
 
-3. **solicitudes_credito (Aprobada) ──< creditos**
-   Un crédito nace de una solicitud aprobada.
+  * `id_credito` (FK), estado → `dom_estado_cuota`.
+  * `uq (id_credito, numero_cuota)` asegura plan único por crédito.
+* `pagos`:
 
-   * Guarda `monto_otorgado`, `tasa_interes`, `plazo_meses`, fechas y **estado** (Activo, En_Mora, Pagado, Refinanciado – **dom_estado_credito**).
+  * `id_cuota` (FK), `id_metodo → dom_metodo_pago`. `numero_comprobante` único.
+* `penalizaciones`:
 
-4. **creditos (1) ──< cuotas (N)**
-   Cada crédito se amortiza en N cuotas (generadas por `sp_generar_cuotas`).
+  * `id_cuota` (FK), `id_estado → dom_estado_penalizacion`.
+* `productos_financieros`:
 
-   * Cada cuota tiene `monto_cuota`, descomposición capital/interés, `saldo_pendiente`, `monto_pagado` y **estado** (Pendiente, Vencida, Pagada, Pagada_Con_Mora – **dom_estado_cuota**).
-   * El trigger `trg_cuota_actualiza_credito` recalcula el **estado del crédito** según sus cuotas.
+  * `id_tipo → dom_tipo_producto`, `id_estado → dom_estado_producto`.
+  * `historico_tasas` (1:N) con ventanas de vigencia no solapadas (validado por trigger).
+* `evaluaciones_seguimiento`:
 
-5. **cuotas (1) ──< pagos (N)**
-   Los pagos **no** se insertan directo (salvo guardia de semillas). Deben pasar por `sp_registrar_pago`:
+  * `id_cliente`, `id_credito` y `id_analista → empleados` + `id_comp_pago → dom_comp_pago`.
 
-   * Valida **no sobrepago** (pago ≤ saldo de cuota).
-   * Calcula `dias_demora`.
-   * Si hay mora, el **AFTER INSERT** en `pagos` crea una **penalización**.
+### Marketing
 
-6. **cuotas (1) ──< penalizaciones (N)**
-   Se generan automáticamente con `fn_calcular_mora(monto, días, tasa)` y quedan en `dom_estado_penalizacion` Pendiente → Pagada (cuando la cuota pasa a pagada).
+* `campanias_promocionales`:
 
-> **Flujo completo:** Cliente → Solicitud(+Garantes) → Aprobación → Crédito → Cuotas → Pagos → Penalizaciones (auto) → Estado de Crédito.
+  * Estados → `dom_estado_campania`.
+  * `campanias_productos` (N:M con productos).
+  * `campanias_clientes` registra **contactos** por fecha/canal/resultado (PK: `id_campania, id_cliente, fecha_contacto`).
+* `clientes.id_campania_ingreso`:
 
----
+  * atribuye “campaña de ingreso” (primer éxito). Se mantiene por SPs/transacciones.
 
-### 3) Productos y tasas
+### Auditoría
 
-* **dom_tipo_producto (1) ──< productos_financieros (N)**
-  Tipos: Personal, Hipotecario, Empresarial, Leasing, Tarjeta_Corporativa, etc.
-* **productos_financieros (1) ──< historico_tasas (N)**
-  Cambios de tasa con **ventanas de vigencia**: `vigente_desde`/`vigente_hasta`.
-  **Trigger anti-solape**: `trg_hist_no_solape`.
-  **Función**: `fn_tasa_vigente(id_producto, fecha)` determina la tasa aplicable en una fecha.
+* `auditoria_eventos`:
 
-> **Uso:** Al aprobar / refinanciar, si no se pasa una tasa explícita, se toma la **vigente** al día.
+  * columnas: `tabla, pk_nombre, pk_valor, operacion, usuario, evento_ts, datos_antes, datos_despues`.
+  * Triggers en `clientes`, `pagos`, `creditos` (extensible) llenan esta bitácora.
+* `auditoria_tasas`:
+
+  * soporte para cambios en `historico_tasas` (cuando aplique).
 
 ---
 
-### 4) RRHH
+## Reglas de negocio implementadas
 
-* **sucursales (1) ──< empleados (N)**
-  Con FK a `dom_cargo_empleado` y `dom_estado_empleado`.
-  **Analistas** aparecen como `id_analista` en `solicitudes_credito` y en `evaluaciones_seguimiento`.
-
----
-
-### 5) Marketing y atribución
-
-* **campanias_promocionales**: cabecera con presupuesto, inversión y `id_estado` (**dom_estado_campania**).
-* **campanias_productos (N:M)**: qué productos se promocionan en cada campaña.
-* **campanias_clientes (N:M con trazas)**:
-
-  * Clave: `(id_campania, id_cliente, fecha_contacto)`
-  * Guarda **canal** (Web/Sucursal/Email/WhatsApp), **resultado** (‘Convirtio’ o ‘No’).
-  * Permite análisis de **funnel**, **series temporales**, y **atribución**:
-
-    * **Last touch**: vista `vw_atribucion_ultimo_toque`.
-    * **First convert wins**: si el primer contacto que convierte no tiene `id_campania_ingreso`, el SP `sp_tx_registrar_contacto_campania` la asigna y recalcula `clientes_captados`.
-
-> **KPIs**: vistas y queries Q22–Q30 (con **ROAS**, **CPA**, cohortes, aprobación por analista, etc.).
+* **Soft-delete** en todas las tablas: `is_deleted` + `deleted_at/by`.
+* **Guardia de pagos**: variable de sesión `@__allow_pago_insert` (trigger `trg_pago_calcular_demora`) **impide** inserts directos en `pagos`; obliga a usar `sp_registrar_pago`.
+* **Penalización automática**: trigger `trg_pagos_ai_penalizacion` calcula mora con `fn_calcular_mora` (tasa diaria 0.0005) y crea `penalizaciones` cuando corresponda.
+* **Evitar sobrepago**: `sp_registrar_pago` verifica que `p_monto` ≤ saldo de la cuota.
+* **Estado de cuota/credito**: triggers actualizan `cuotas.id_estado` y resumen en `creditos.id_estado` (Activo, En_Mora, Pagado).
+* **Aprobación exige garantes**: trigger `trg_sol_no_aprobar_sin_garante`.
+* **Histórico de tasas sin solapamiento**: trigger `trg_hist_no_solape` + **backfill** de vigencias.
+* **Generación de cuotas (francés)**: `sp_generar_cuotas`.
+* **Aprobación de solicitud**: `sp_aprobar_solicitud` valida cargo del analista, límites del producto, garantes, tasa vigente (fallback `fn_tasa_vigente`) y crea crédito + plan de cuotas.
+* **Refinanciación segura**: `sp_refinanciar_credito` (envuelta por `sp_tx_refinanciar_si_mora`).
 
 ---
 
-### 6) Auditoría
+## Índices y performance (destacados)
 
-* **auditoria_eventos**: captura **INSERT/UPDATE/DELETE** de `clientes`, `pagos`, `creditos` (puede ampliarse a más tablas). Guarda **antes/después** en JSON, usuario y timestamp.
-* **auditoria_tasas**: línea fina para trazas de `historico_tasas`.
+* Índices compuestos por acceso típico:
 
-> **Objetivo:** trazabilidad, debugging y futura integración con **CDC** / Data Lake.
-
----
-
-## Estados (DOM) y transiciones típicas
-
-* **dom_estado_solicitud**: `Pendiente` → `En_Revision` → `Aprobada`/`Rechazada`
-
-  * **Regla**: no se puede pasar a **Aprobada** si la solicitud **no** tiene garantes (trigger).
-* **dom_estado_credito**: `Activo` ⇄ `En_Mora` → `Pagado` / `Refinanciado`
-
-  * Se recalcula por trigger al tocar cuotas.
-* **dom_estado_cuota**: `Pendiente` → `Vencida` → `Pagada`/`Pagada_Con_Mora`
-
-  * Depende de `monto_pagado` y `fecha_vencimiento`.
-* **dom_estado_penalizacion**: `Pendiente` → `Pagada`
-
-  * Se marca pagada cuando la cuota se paga (trigger `trg_penalizacion_marcar_pagada`).
+  * `solicitudes_credito(id_producto, fecha_solicitud, id_estado)`
+  * `creditos(id_cliente, id_estado, fecha_inicio)`
+  * `cuotas(id_estado, fecha_vencimiento)` y `(id_credito, is_deleted)`
+  * `clientes(provincia_norm, id_estado)` y `(id_provincia, id_ciudad)`
+  * Marketing: `campanias_clientes(id_campania, id_cliente, fecha_contacto)`
+* **Generated columns** para normalización paulatina de `clientes.provincia/ciudad`.
 
 ---
 
-## Ejemplos de recorridos (con consultas tipo)
+## Los 3 archivos (qué hace cada uno)
 
-### A) “¿Cuánto debe cada cliente (vencido+pendiente)?”
+### 1) `esquema_01.sql`
 
-```sql
-SELECT cl.id_cliente,
-       CONCAT(cl.nombre,' ',cl.apellido) AS cliente,
-       ROUND(SUM(CASE WHEN cu.id_estado IN (@id_cuo_pend, @id_cuo_venc)
-                THEN cu.monto_cuota - COALESCE(cu.monto_pagado,0) ELSE 0 END),2) AS deuda
-FROM clientes cl
-JOIN creditos cr ON cr.id_cliente = cl.id_cliente AND cr.is_deleted=0
-JOIN cuotas   cu ON cu.id_credito = cr.id_credito AND cu.is_deleted=0
-WHERE cl.is_deleted=0
-GROUP BY cl.id_cliente, cliente;
-```
+* Crea **todas** las tablas con FKs, checks e índices.
+* Define **funciones** (`fn_calcular_mora`, `fn_tasa_vigente`), **procedures** (aprobar solicitud, generar cuotas, registrar pago, refinanciar, asignar evaluación).
+* Registra **triggers** de metadatos y de negocio (guardia de pagos, mora, estados, anti-solape).
+* Incluye **usuarios** de ejemplo (`admin_creditos`, `analista_credito`, `gestor_cobranza`) y `GRANT` mínimos.
 
-### B) “¿Qué analista aprueba más y en menos tiempo?”
+### 2) `seed_02.sql`
 
-* Tasa de aprobación: **Q28**
-* Tiempo de evaluación por estado: **Q11**
+* Limpia datos respetando FKs (mantiene objetos).
+* Genera secuencia `helper_seq` (1..5000) para poblar masivamente.
+* Inserta **DOM** (catálogos) y obtiene IDs en variables.
+* **Provincias(60)**, **Sucursales(80)**, **Empleados(300)**, **Campañas(60)**,
+  **Clientes(500)** (con mezcla de estados, situaciones, atribuciones),
+  **Productos(60)** + **historico_tasas** (3 por producto + parche de vigencias),
+  **Garantes(300)**, **Solicitudes(600)** + vínculo de **Garantes**,
+  **Créditos** (todas las aprobadas) → **Cuotas** (vía SP),
+  **Pagos** (mix: parciales, completos, con/ sin mora) → penalizaciones automáticas,
+  **Evaluaciones**, **Campaña–Producto**, **Campaña–Cliente** (~2000 contactos).
+* Recalcula estados de cuotas/créditos y contadores de campañas.
 
-### C) “Top de sucursales por vencido (sin `LIMIT`)”
+### 3) `queries_03.sql`
 
-* Usar **subconsulta** con `DENSE_RANK()` (ver **Q15**).
+* **Reportes (Q1–Q30)**: cartera, mora por sucursal, deuda por cliente, top por producto, productividad de analistas, penalizaciones, próximos vencimientos, tasas, tiempos de evaluación, avance de créditos, morosos, eficacia/ROAS/atribución de campañas, cohortes, correlaciones, etc.
 
----
+  * “Top X” **sin** `LIMIT` cuando corresponde: usa **ventanas** (`DENSE_RANK`) o **subconsultas** de ranking (para cumplir la devolución del profe).
+* **Vistas**:
 
-## Decisiones de diseño (por qué así)
+  * `vw_cartera_cobranza`, `vw_solicitudes_analista`, `vw_creditos_avance`,
+    `vw_kpi_campanias`, `vw_atribucion_ultimo_toque`.
+* **Transacciones (T1–T3)**:
 
-1. **GEO dual (texto + FK)**
-   Permite migración **progresiva** y compatibilidad con datasets viejos. `*_norm` generadas hacen las búsquedas rápidas aun sin FKs.
-
-2. **Catálogos DOM (sin ENUM)**
-   Cambiar estados/tipos no requiere DDL; se audita y se versiona.
-
-3. **Pagos protegidos por SP + guardia**
-   Evita inconsistencias (sobrepago, falta de penalización, fechas mal calculadas). Solo seeds y SPs pueden insertar.
-
-4. **Triggers como “guard rails”**
-
-   * Anti-solape de tasas (consistencia temporal).
-   * Anti-aprobación sin garantes (regla de negocio).
-   * Re-cálculo del estado del crédito (integridad derivada).
-
-5. **Vistas KPI “MERGE”**
-   Para exponer métricas estables a usuarios con **solo SELECT** (ideal para dashboards o BI ligero).
-
-6. **Top X sin `LIMIT` (consigna académica)**
-   Consultas implementadas con **rankings/subconsultas** (ej. Q5, Q15, Q27) para cumplir buenas prácticas pedidas por cátedra.
+  * `sp_tx_pagar_primeras_cuotas(p_id_cliente)` (usa guardia/validación).
+  * `sp_tx_refinanciar_si_mora(...)` (envoltura segura).
+  * `sp_tx_registrar_contacto_campania(...)` (contacto + asignación de ingreso + recálculo captados).
 
 ---
 
-## Rendimiento e índices (razonamiento)
+## Flujo típico (end-to-end)
 
-* **Filtros calientes**
-
-  * `cuotas(id_credito,id_estado,fecha_vencimiento)` → cobranza y paneles de mora.
-  * `pagos(id_cuota,fecha_pago)` → conciliación y series.
-  * `solicitudes_credito(id_producto,fecha_solicitud,id_estado)` → embudo comercial.
-  * `clientes(provincia_norm,id_estado)` y `clientes(id_provincia/id_ciudad)` → filtros geo mixtos.
-* **Cardinalidades altas**: `campanias_clientes` puede crecer grande; conviene indexar `(id_cliente, fecha_contacto)` y `(id_campania, fecha_contacto)` si las series y last/first touch son muy usados.
-* **Histórico de tasas**: `(id_producto, vigente_desde, vigente_hasta)` acelera `fn_tasa_vigente`.
+1. **Ingreso** de cliente → **Solicitud** (gestor) con **garantes**.
+2. **Analista** evalúa y **aprueba** (SP), se crea **Crédito + Cuotas**.
+3. Cliente **paga** (SP): se calcula demora; si hay mora ⇒ **Penalización**.
+4. **Estados** de cuotas/crédito se recalculan automáticamente.
+5. **Marketing** empuja contactos en `campanias_clientes`; si “Convirtió”, se setea `id_campania_ingreso` y se actualiza `clientes_captados`.
+6. **Reportes** consumen vistas y consultas de `queries_03.sql`.
 
 ---
 
-## Ciclos de vida (CRUD resumido)
+## Normalización y escalabilidad
 
-* **Solicitud**: `INSERT` → (evalúa) `UPDATE id_estado` → **Aprobada** crea **Crédito** (SP)
-* **Crédito**: `INSERT` (con tasa vigente) → `sp_generar_cuotas` → **Cuotas**
-* **Pago**: `sp_registrar_pago` → **Penalización** (auto) → **Actualizar estado cuotas/credito**
-* **Refinanciación**: `sp_refinanciar_credito` deja original en “Refinanciado” y crea **nuevo crédito** + **nuevas cuotas**
-* **Campañas**: contactos en `campanias_clientes`; cuando “Convirtio” (first-convert) se fija `id_campania_ingreso` y recalculan captados
+* **BCNF/3FN** en core; DOM evita `ENUM`.
+* Geografía **escalable** (`provincias/ciudades`) con FKs **y** columnas texto de compatibilidad + columnas normalizadas virtuales para migraciones sin “big bang”.
+* **Soft-delete** permite auditoría y recuperabilidad.
+* **Índices** alineados a lecturas OLTP/OLAP ligeras; vistas para BI liviano.
 
 ---
 
-## “Qué mirar” si algo falla
+## Buenas prácticas incorporadas
 
-* **Q27 “0 resultados”**: verificá que haya **contactos recientes** (<90 días) y que **ninguno** tenga `resultado='Convirtio'`. Si la demo es muy “exitosa”, baja el umbral a `>=2` (ya lo hace) o extendé la ventana.
-* **Tasas**: si `fn_tasa_vigente` devuelve 0, corré el “backfill de vigencias” de `esquema_01.sql` o el **parche** de `seed_02.sql`.
-* **Pagos directos**: el trigger bloquea; usá el **SP** o la **guardia** en seeds.
+* “**Top X**” mediante ventanas/subconsultas (no `LIMIT` a secas).
+* **Triggers** minimalistas y **SPs** para lógica de negocio; **guard rails** para datos críticos (pagos, tasas).
+* **Auditoría centralizada** en JSON (fácil de consultar por rango de fechas/tabla/PK).
+* **Reproducibilidad** del seed (funciona en MySQL 8; sin `ENGINE/CHARSET` explícitos).
 
+---
+
+## Cómo ejecutar (orden recomendado)
+
+1. `esquema_01.sql`
+2. `seed_02.sql`
+3. `queries_03.sql` (vistas/consultas/transacciones)
+
+> Si vas a probar transacciones de pago, hacelo con `CALL sp_tx_pagar_primeras_cuotas(<id_cliente>);` y mirá las vistas/consultas (`vw_cartera_cobranza`, Q9, Q12).
+
+---
+
+## Notas de diseño
+
+* **Atribución de campañas**:
+
+  * `campanias_clientes` guarda **todos** los toques;
+  * `clientes.id_campania_ingreso` representa **primer** toque exitoso (mantenido por `sp_tx_registrar_contacto_campania`).
+  * `vw_atribucion_ultimo_toque` muestra aparte el “last-touch”.
+* **Historico de tasas**: ventanas **no solapadas**; función `fn_tasa_vigente` decide la tasa aplicable por fecha.
+* **Estados de cliente** (Activo/Moroso/Bloqueado) conviven con estado de crédito/cuota; los reportes los combinan según necesidad.
