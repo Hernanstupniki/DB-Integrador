@@ -699,63 +699,11 @@ GROUP BY cp.id_campania, cp.nombre, u.id_cliente;
 
 
 /* =======================
-   C) TRANSACCIONES (T1–T3)
+   C) TRANSACCIONES (T1–T2)
    ======================= */
 
--- T1. Pagar primeras cuotas vencidas/pendientes de un cliente
-DROP PROCEDURE IF EXISTS sp_tx_pagar_primeras_cuotas;
-DELIMITER $$
-CREATE PROCEDURE sp_tx_pagar_primeras_cuotas(IN p_id_cliente INT)
-BEGIN
-  DECLARE EXIT HANDLER FOR SQLEXCEPTION
-  BEGIN
-    ROLLBACK;
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transacción revertida por excepción en pagos';
-  END;
 
-  START TRANSACTION;
-
-    DROP TEMPORARY TABLE IF EXISTS tmp_cuotas_pagar;
-    CREATE TEMPORARY TABLE tmp_cuotas_pagar AS
-      SELECT cu.id_cuota, cu.monto_cuota, cu.fecha_vencimiento
-      FROM creditos cr
-      JOIN cuotas cu ON cu.id_credito = cr.id_credito
-      WHERE cr.id_cliente = p_id_cliente
-        AND cr.is_deleted = 0
-        AND cu.is_deleted = 0
-        AND cr.id_estado IN (@id_cre_act,@id_cre_mor)
-        AND cu.numero_cuota = 1
-        AND cu.id_estado IN (@id_cuo_pend,@id_cuo_venc);
-
-    SET @__allow_pago_insert := 1;
-
-    INSERT INTO pagos(id_cuota, fecha_pago, monto_pagado, id_metodo, numero_comprobante)
-    SELECT
-      id_cuota,
-      LEAST(DATE_SUB(fecha_vencimiento, INTERVAL 1 DAY), CURDATE()),
-      monto_cuota,
-      @id_met_trf,
-      CONCAT('TX1-', id_cuota)
-    FROM tmp_cuotas_pagar;
-
-    SET @__allow_pago_insert := NULL;
-
-    IF (SELECT COUNT(*)
-        FROM cuotas cu
-        JOIN tmp_cuotas_pagar t USING (id_cuota)
-        WHERE cu.is_deleted = 0
-          AND COALESCE(cu.monto_pagado,0) < cu.monto_cuota) > 0
-    THEN
-      ROLLBACK;
-      SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Transacción revertida: alguna cuota no quedó pagada';
-    ELSE
-      COMMIT;
-    END IF;
-END$$
-DELIMITER ;
-
--- T2. Refinanciación segura (envuelve reglas + genera nuevas cuotas)
+-- T1. Refinanciación segura (envuelve reglas + genera nuevas cuotas)
 DROP PROCEDURE IF EXISTS sp_tx_refinanciar_si_mora;
 DELIMITER $$
 CREATE PROCEDURE sp_tx_refinanciar_si_mora(
@@ -789,7 +737,7 @@ BEGIN
 END$$
 DELIMITER ;
 
--- T3. Registrar contacto de campaña (y consolidar conversión)
+-- T2. Registrar contacto de campaña (y consolidar conversión)
 DROP PROCEDURE IF EXISTS sp_tx_registrar_contacto_campania;
 DELIMITER $$
 CREATE PROCEDURE sp_tx_registrar_contacto_campania(
