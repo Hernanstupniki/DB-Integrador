@@ -708,19 +708,6 @@ CREATE INDEX idx_empleado_sucursal_cargo
 CREATE INDEX idx_cliente_provincia_estado
   ON clientes(provincia_norm, id_estado);
 
--- Extras con is_deleted
-CREATE INDEX idx_pago_isdel_cuota
-  ON pagos(id_cuota, is_deleted);
-
-CREATE INDEX idx_cuota_isdel_credito
-  ON cuotas(id_credito, is_deleted);
-
-CREATE INDEX idx_sg_isdel_solicitud
-  ON solicitudes_garantes(id_solicitud, is_deleted);
-
-CREATE INDEX idx_hist_vigencia_ext
-  ON historico_tasas(id_producto, vigente_desde, vigente_hasta);
-
 -- =========================
 -- 4) FUNCIONES & PROCEDURES
 -- =========================
