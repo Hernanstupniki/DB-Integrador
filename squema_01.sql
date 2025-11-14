@@ -1421,7 +1421,56 @@ BEGIN
           JSON_OBJECT('id_cliente', OLD.id_cliente,'id_producto', OLD.id_producto,'monto_otorgado', OLD.monto_otorgado,'id_estado', OLD.id_estado));
 END$$
 
+-- Auditoría de histórico de tasas -> auditoria_tasas
+DROP TRIGGER IF EXISTS aud_hist_tasas_ins $$
+DROP TRIGGER IF EXISTS aud_hist_tasas_upd $$
+
+CREATE TRIGGER aud_hist_tasas_ins
+AFTER INSERT ON historico_tasas
+FOR EACH ROW
+BEGIN
+  INSERT INTO auditoria_tasas(
+    id_historico,
+    id_producto,
+    tasa,
+    vigente_desde,
+    vigente_hasta,
+    operacion
+  )
+  VALUES (
+    NEW.id_historico,
+    NEW.id_producto,
+    NEW.tasa_nueva,
+    NEW.vigente_desde,
+    NEW.vigente_hasta,
+    'INSERT'
+  );
+END$$
+
+CREATE TRIGGER aud_hist_tasas_upd
+AFTER UPDATE ON historico_tasas
+FOR EACH ROW
+BEGIN
+  INSERT INTO auditoria_tasas(
+    id_historico,
+    id_producto,
+    tasa,
+    vigente_desde,
+    vigente_hasta,
+    operacion
+  )
+  VALUES (
+    NEW.id_historico,
+    NEW.id_producto,
+    NEW.tasa_nueva,
+    NEW.vigente_desde,
+    NEW.vigente_hasta,
+    'UPDATE'
+  );
+END$$
+
 DELIMITER ;
+
 
 -- =========================
 -- 6) Backfill de vigencias (por si entran filas sin vigencia)
