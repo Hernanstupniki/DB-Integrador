@@ -780,6 +780,51 @@ BEGIN
 END$$
 DELIMITER ;
 
+/* =======================
+   D) CONSULTAS DE AUDITORÍA
+   ======================= */
+
+-- Q31. Auditoría de cambios en CLIENTES (ejemplo práctico)
+-- Idea:
+--   Los triggers aud_clientes_ins / aud_clientes_upd / aud_clientes_del
+--   graban en auditoria_eventos cada vez que hay INSERT / UPDATE / DELETE
+--   sobre la tabla clientes.
+--
+--   IMPORTANTE:
+--   El trigger de UPDATE solo guarda estos campos:
+--      dni, nombre, apellido, id_estado
+--   Por eso, si cambias solo teléfono, dirección, etc., los JSON
+--   datos_antes y datos_despues pueden verse iguales.
+--
+--   En este ejemplo forzamos un cambio REAL en campos auditados
+--   para que se note claramente la diferencia entre antes y después.
+
+-- Paso 1: limpiar la auditoría (solo para ver claro este ejemplo)
+TRUNCATE TABLE auditoria_eventos;
+
+-- Paso 2: forzar un cambio en un cliente existente
+--   Ajustar el id_cliente si en tu seed no existe el 301.
+UPDATE clientes
+SET nombre   = CONCAT(nombre,   '_AUD'),
+    apellido = CONCAT(apellido, '_AUD')
+WHERE id_cliente = 301;
+
+-- Paso 3: ver cómo quedó registrado en auditoria_eventos
+SELECT
+  tabla,
+  pk_nombre,
+  pk_valor,
+  operacion,
+  usuario,
+  evento_ts,
+  datos_antes,
+  datos_despues
+FROM auditoria_eventos
+WHERE tabla     = 'clientes'
+  AND pk_nombre = 'id_cliente'
+  AND pk_valor  = '301'
+ORDER BY evento_ts DESC;
+
 -- Ejemplo: CALL sp_tx_registrar_contacto_campania(3, 120, 'WhatsApp', 'Convirtio', NOW());
 
 /* =======================
