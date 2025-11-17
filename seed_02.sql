@@ -1,6 +1,6 @@
 -- ===========================================
 -- seed_02.sql  |  Datos demo masivos (MySQL 8)
--- Esquema: gestion_creditos  (con tablas dom_* y auditoría)
+-- Esquema: gestion_creditos  (con tablas de dominio)
 -- Genera >= 60 filas por tabla (muchas >> 60)
 -- Listas de dominio: <60 por diseño (justificado)
 -- Compatible con esquema_01.sql provisto
@@ -15,9 +15,6 @@ SET sql_safe_updates = 0;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- tablas dependientes (orden FK)
-DELETE FROM auditoria_eventos;
-DELETE FROM auditoria_tasas;
-
 DELETE FROM campanias_clientes;
 DELETE FROM campanias_productos;
 DELETE FROM evaluaciones_seguimiento;
@@ -40,20 +37,20 @@ DELETE FROM ciudades;
 DELETE FROM provincias;
 
 -- dominios (catálogos finitos)
-DELETE FROM dom_estado_sucursal;
-DELETE FROM dom_cargo_empleado;
-DELETE FROM dom_estado_empleado;
-DELETE FROM dom_estado_cliente;
-DELETE FROM dom_situacion_laboral;
-DELETE FROM dom_tipo_producto;
-DELETE FROM dom_estado_producto;
-DELETE FROM dom_estado_campania;
-DELETE FROM dom_estado_solicitud;
-DELETE FROM dom_estado_credito;
-DELETE FROM dom_estado_cuota;
-DELETE FROM dom_metodo_pago;
-DELETE FROM dom_estado_penalizacion;
-DELETE FROM dom_comp_pago;
+DELETE FROM estado_sucursal;
+DELETE FROM cargo_empleado;
+DELETE FROM estado_empleado;
+DELETE FROM estado_cliente;
+DELETE FROM situacion_laboral;
+DELETE FROM tipo_producto;
+DELETE FROM estado_producto;
+DELETE FROM estado_campania;
+DELETE FROM estado_solicitud;
+DELETE FROM estado_credito;
+DELETE FROM estado_cuota;
+DELETE FROM metodo_pago;
+DELETE FROM estado_penalizacion;
+DELETE FROM comp_pago;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -80,102 +77,102 @@ WHERE t.num <= 5000;
 -- ------------------------------------------------------------------
 -- A) DOMINIOS (listas finitas; <60 por diseño)  [Justificado]
 -- ------------------------------------------------------------------
-INSERT INTO dom_estado_sucursal (codigo,nombre) VALUES
+INSERT INTO estado_sucursal (codigo,nombre) VALUES
  ('Activa','Activa'),('Inactiva','Inactiva');
 
-INSERT INTO dom_cargo_empleado (codigo,nombre) VALUES
+INSERT INTO cargo_empleado (codigo,nombre) VALUES
  ('Atencion_Cliente','Atención al Cliente'),
  ('Analista_Credito','Analista de Crédito'),
  ('Gerente','Gerente'),
  ('Cobranza','Gestor de Cobranza'),
  ('Administrador','Administrador');
 
-INSERT INTO dom_estado_empleado (codigo,nombre) VALUES
+INSERT INTO estado_empleado (codigo,nombre) VALUES
  ('Activo','Activo'),('Inactivo','Inactivo');
 
-INSERT INTO dom_estado_cliente (codigo,nombre) VALUES
+INSERT INTO estado_cliente (codigo,nombre) VALUES
  ('Activo','Activo'),('Inactivo','Inactivo'),('Moroso','Moroso'),('Bloqueado','Bloqueado');
 
-INSERT INTO dom_situacion_laboral (codigo,nombre) VALUES
+INSERT INTO situacion_laboral (codigo,nombre) VALUES
  ('Empleado','Empleado'),('Autonomo','Autónomo'),('Empresario','Empresario'),('Jubilado','Jubilado'),('Desempleado','Desempleado');
 
-INSERT INTO dom_tipo_producto (codigo,nombre) VALUES
+INSERT INTO tipo_producto (codigo,nombre) VALUES
  ('Personal','Crédito Personal'),('Hipotecario','Hipotecario'),
  ('Empresarial','Empresarial'),('Leasing','Leasing'),
  ('Tarjeta_Corporativa','Tarjeta Corporativa');
 
-INSERT INTO dom_estado_producto (codigo,nombre) VALUES
+INSERT INTO estado_producto (codigo,nombre) VALUES
  ('Activo','Activo'),('Inactivo','Inactivo');
 
-INSERT INTO dom_estado_campania (codigo,nombre) VALUES
+INSERT INTO estado_campania (codigo,nombre) VALUES
  ('Activa','Activa'),('Finalizada','Finalizada'),('Cancelada','Cancelada');
 
-INSERT INTO dom_estado_solicitud (codigo,nombre) VALUES
+INSERT INTO estado_solicitud (codigo,nombre) VALUES
  ('Pendiente','Pendiente'),('En_Revision','En Revisión'),
  ('Aprobada','Aprobada'),('Rechazada','Rechazada');
 
-INSERT INTO dom_estado_credito (codigo,nombre) VALUES
+INSERT INTO estado_credito (codigo,nombre) VALUES
  ('Activo','Activo'),('Pagado','Pagado'),('Refinanciado','Refinanciado'),
  ('En_Mora','En Mora'),('Cancelado','Cancelado');
 
-INSERT INTO dom_estado_cuota (codigo,nombre) VALUES
+INSERT INTO estado_cuota (codigo,nombre) VALUES
  ('Pendiente','Pendiente'),('Pagada','Pagada'),
  ('Vencida','Vencida'),('Pagada_Con_Mora','Pagada con Mora');
 
-INSERT INTO dom_metodo_pago (codigo,nombre) VALUES
+INSERT INTO metodo_pago (codigo,nombre) VALUES
  ('Efectivo','Efectivo'),('Transferencia','Transferencia'),
  ('Debito_Automatico','Débito Automático'),('Tarjeta','Tarjeta'),
  ('Cheque','Cheque');
 
-INSERT INTO dom_estado_penalizacion (codigo,nombre) VALUES
+INSERT INTO estado_penalizacion (codigo,nombre) VALUES
  ('Pendiente','Pendiente'),('Pagada','Pagada');
 
-INSERT INTO dom_comp_pago (codigo,nombre) VALUES
+INSERT INTO comp_pago (codigo,nombre) VALUES
  ('Excelente','Excelente'),('Bueno','Bueno'),('Regular','Regular'),
  ('Malo','Malo'),('Muy_Malo','Muy Malo');
 
 -- IDs de dominio (para referencias)
-SET @id_suc_act  = (SELECT id FROM dom_estado_sucursal  WHERE codigo='Activa');
-SET @id_suc_inact= (SELECT id FROM dom_estado_sucursal  WHERE codigo='Inactiva');
+SET @id_suc_act  = (SELECT id FROM estado_sucursal  WHERE codigo='Activa');
+SET @id_suc_inact= (SELECT id FROM estado_sucursal  WHERE codigo='Inactiva');
 
-SET @id_emp_act  = (SELECT id FROM dom_estado_empleado  WHERE codigo='Activo');
-SET @id_emp_inact= (SELECT id FROM dom_estado_empleado  WHERE codigo='Inactivo');
+SET @id_emp_act  = (SELECT id FROM estado_empleado  WHERE codigo='Activo');
+SET @id_emp_inact= (SELECT id FROM estado_empleado  WHERE codigo='Inactivo');
 
-SET @id_cli_act  = (SELECT id FROM dom_estado_cliente   WHERE codigo='Activo');
-SET @id_cli_mor  = (SELECT id FROM dom_estado_cliente   WHERE codigo='Moroso');
-SET @id_cli_bloq = (SELECT id FROM dom_estado_cliente   WHERE codigo='Bloqueado');
+SET @id_cli_act  = (SELECT id FROM estado_cliente   WHERE codigo='Activo');
+SET @id_cli_mor  = (SELECT id FROM estado_cliente   WHERE codigo='Moroso');
+SET @id_cli_bloq = (SELECT id FROM estado_cliente   WHERE codigo='Bloqueado');
 
-SET @id_sol_pend = (SELECT id FROM dom_estado_solicitud WHERE codigo='Pendiente');
-SET @id_sol_enrev= (SELECT id FROM dom_estado_solicitud WHERE codigo='En_Revision');
-SET @id_sol_aprb = (SELECT id FROM dom_estado_solicitud WHERE codigo='Aprobada');
-SET @id_sol_rech = (SELECT id FROM dom_estado_solicitud WHERE codigo='Rechazada');
+SET @id_sol_pend = (SELECT id FROM estado_solicitud WHERE codigo='Pendiente');
+SET @id_sol_enrev= (SELECT id FROM estado_solicitud WHERE codigo='En_Revision');
+SET @id_sol_aprb = (SELECT id FROM estado_solicitud WHERE codigo='Aprobada');
+SET @id_sol_rech = (SELECT id FROM estado_solicitud WHERE codigo='Rechazada');
 
-SET @id_cre_act  = (SELECT id FROM dom_estado_credito   WHERE codigo='Activo');
-SET @id_cre_pag  = (SELECT id FROM dom_estado_credito   WHERE codigo='Pagado');
-SET @id_cre_mor  = (SELECT id FROM dom_estado_credito   WHERE codigo='En_Mora');
+SET @id_cre_act  = (SELECT id FROM estado_credito   WHERE codigo='Activo');
+SET @id_cre_pag  = (SELECT id FROM estado_credito   WHERE codigo='Pagado');
+SET @id_cre_mor  = (SELECT id FROM estado_credito   WHERE codigo='En_Mora');
 
-SET @id_cuo_pend = (SELECT id FROM dom_estado_cuota     WHERE codigo='Pendiente');
-SET @id_cuo_pag  = (SELECT id FROM dom_estado_cuota     WHERE codigo='Pagada');
-SET @id_cuo_venc = (SELECT id FROM dom_estado_cuota     WHERE codigo='Vencida');
-SET @id_cuo_pagmor = (SELECT id FROM dom_estado_cuota   WHERE codigo='Pagada_Con_Mora');
+SET @id_cuo_pend = (SELECT id FROM estado_cuota     WHERE codigo='Pendiente');
+SET @id_cuo_pag  = (SELECT id FROM estado_cuota     WHERE codigo='Pagada');
+SET @id_cuo_venc = (SELECT id FROM estado_cuota     WHERE codigo='Vencida');
+SET @id_cuo_pagmor = (SELECT id FROM estado_cuota   WHERE codigo='Pagada_Con_Mora');
 
-SET @id_met_trf  = (SELECT id FROM dom_metodo_pago      WHERE codigo='Transferencia');
-SET @id_met_efv  = (SELECT id FROM dom_metodo_pago      WHERE codigo='Efectivo');
-SET @id_met_deb  = (SELECT id FROM dom_metodo_pago      WHERE codigo='Debito_Automatico');
+SET @id_met_trf  = (SELECT id FROM metodo_pago      WHERE codigo='Transferencia');
+SET @id_met_efv  = (SELECT id FROM metodo_pago      WHERE codigo='Efectivo');
+SET @id_met_deb  = (SELECT id FROM metodo_pago      WHERE codigo='Debito_Automatico');
 
-SET @id_pen_pend = (SELECT id FROM dom_estado_penalizacion WHERE codigo='Pendiente');
+SET @id_pen_pend = (SELECT id FROM estado_penalizacion WHERE codigo='Pendiente');
 
-SET @id_cargo_ac = (SELECT id FROM dom_cargo_empleado WHERE codigo='Atencion_Cliente');
-SET @id_cargo_an = (SELECT id FROM dom_cargo_empleado WHERE codigo='Analista_Credito');
-SET @id_cargo_ge = (SELECT id FROM dom_cargo_empleado WHERE codigo='Gerente');
-SET @id_cargo_cb = (SELECT id FROM dom_cargo_empleado WHERE codigo='Cobranza');
-SET @id_cargo_ad = (SELECT id FROM dom_cargo_empleado WHERE codigo='Administrador');
+SET @id_cargo_ac = (SELECT id FROM cargo_empleado WHERE codigo='Atencion_Cliente');
+SET @id_cargo_an = (SELECT id FROM cargo_empleado WHERE codigo='Analista_Credito');
+SET @id_cargo_ge = (SELECT id FROM cargo_empleado WHERE codigo='Gerente');
+SET @id_cargo_cb = (SELECT id FROM cargo_empleado WHERE codigo='Cobranza');
+SET @id_cargo_ad = (SELECT id FROM cargo_empleado WHERE codigo='Administrador');
 
-SET @id_tipo_per = (SELECT id FROM dom_tipo_producto WHERE codigo='Personal');
-SET @id_tipo_hip = (SELECT id FROM dom_tipo_producto WHERE codigo='Hipotecario');
-SET @id_tipo_emp = (SELECT id FROM dom_tipo_producto WHERE codigo='Empresarial');
-SET @id_tipo_lea = (SELECT id FROM dom_tipo_producto WHERE codigo='Leasing');
-SET @id_tipo_tar = (SELECT id FROM dom_tipo_producto WHERE codigo='Tarjeta_Corporativa');
+SET @id_tipo_per = (SELECT id FROM tipo_producto WHERE codigo='Personal');
+SET @id_tipo_hip = (SELECT id FROM tipo_producto WHERE codigo='Hipotecario');
+SET @id_tipo_emp = (SELECT id FROM tipo_producto WHERE codigo='Empresarial');
+SET @id_tipo_lea = (SELECT id FROM tipo_producto WHERE codigo='Leasing');
+SET @id_tipo_tar = (SELECT id FROM tipo_producto WHERE codigo='Tarjeta_Corporativa');
 
 -- ------------------------------------------------------------------
 -- 1) Provincias (60)  ✔
@@ -187,14 +184,12 @@ FROM helper_seq WHERE n <= 60;
 -- ------------------------------------------------------------------
 -- 1.b) Ciudades (5 por provincia = 300)  ✔
 -- ------------------------------------------------------------------
--- Creamos 5 ciudades por cada provincia con nombre determinista
 INSERT INTO ciudades(id_provincia, nombre)
 SELECT p.id_provincia,
        CONCAT('Ciudad P', p.id_provincia, ' - ', k.k)
 FROM provincias p
 JOIN (SELECT 1 AS k UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5) k;
 
--- Mapeo ordinal de ciudad por provincia para joins rápidos
 DROP TEMPORARY TABLE IF EXISTS map_ciudades;
 CREATE TEMPORARY TABLE map_ciudades AS
 SELECT
@@ -205,7 +200,7 @@ SELECT
 FROM ciudades;
 
 -- ------------------------------------------------------------------
--- 2) Sucursales (80)  ✔  (id_provincia + id_ciudad coherentes)
+-- 2) Sucursales (80)  ✔
 -- ------------------------------------------------------------------
 INSERT INTO sucursales(nombre, id_provincia, id_ciudad, ciudad, direccion, telefono, email, fecha_apertura, id_estado)
 SELECT
@@ -252,9 +247,9 @@ SELECT
   DATE_ADD('2023-01-01', INTERVAL n MONTH),
   DATE_ADD('2023-01-01', INTERVAL n+3 MONTH),
   (n % 20),
-  CASE WHEN n % 17 = 0 THEN (SELECT id FROM dom_estado_campania WHERE codigo='Cancelada')
-       WHEN n % 7  = 0 THEN (SELECT id FROM dom_estado_campania WHERE codigo='Finalizada')
-       ELSE (SELECT id FROM dom_estado_campania WHERE codigo='Activa')
+  CASE WHEN n % 17 = 0 THEN (SELECT id FROM estado_campania WHERE codigo='Cancelada')
+       WHEN n % 7  = 0 THEN (SELECT id FROM estado_campania WHERE codigo='Finalizada')
+       ELSE (SELECT id FROM estado_campania WHERE codigo='Activa')
   END,
   1000000 + n*5000,
   100000 + n*1200,
@@ -262,7 +257,7 @@ SELECT
 FROM helper_seq WHERE n <= 60;
 
 -- ------------------------------------------------------------------
--- 5) Clientes (500)  ✔  (con id_provincia + id_ciudad)
+-- 5) Clientes (500)  ✔
 -- ------------------------------------------------------------------
 INSERT INTO clientes(
   nombre, apellido, dni, fecha_nacimiento, email, telefono, direccion,
@@ -283,11 +278,11 @@ SELECT
   mc.id_ciudad   AS id_ciudad,
   300000 + (n * 200),
   ELT((n % 5)+1,
-      (SELECT id FROM dom_situacion_laboral WHERE codigo='Empleado'),
-      (SELECT id FROM dom_situacion_laboral WHERE codigo='Autonomo'),
-      (SELECT id FROM dom_situacion_laboral WHERE codigo='Empresario'),
-      (SELECT id FROM dom_situacion_laboral WHERE codigo='Jubilado'),
-      (SELECT id FROM dom_situacion_laboral WHERE codigo='Desempleado')),
+      (SELECT id FROM situacion_laboral WHERE codigo='Empleado'),
+      (SELECT id FROM situacion_laboral WHERE codigo='Autonomo'),
+      (SELECT id FROM situacion_laboral WHERE codigo='Empresario'),
+      (SELECT id FROM situacion_laboral WHERE codigo='Jubilado'),
+      (SELECT id FROM situacion_laboral WHERE codigo='Desempleado')),
   IF(n % 4 = 0, ((n-1) % 60) + 1, NULL),
   IF(n % 97 = 0, @id_cli_bloq, IF(n % 53 = 0, @id_cli_mor, @id_cli_act))
 FROM helper_seq s
@@ -310,8 +305,8 @@ SELECT
   6,
   60,
   'DNI, comprobantes, scoring',
-  IF(n % 13 = 0, (SELECT id FROM dom_estado_producto WHERE codigo='Inactivo'),
-                 (SELECT id FROM dom_estado_producto WHERE codigo='Activo'))
+  IF(n % 13 = 0, (SELECT id FROM estado_producto WHERE codigo='Inactivo'),
+                 (SELECT id FROM estado_producto WHERE codigo='Activo'))
 FROM helper_seq WHERE n <= 60;
 
 -- Histórico base (3 por producto) con anti-clamp Y2038
@@ -344,14 +339,14 @@ SET @corte_150 := DATE_SUB(CURDATE(), INTERVAL 150 DAY);
 
 UPDATE historico_tasas h
 SET h.vigente_hasta = DATE_SUB(@corte_300, INTERVAL 1 DAY)
-WHERE h.is_deleted = 0
+WHERE h.borrado_logico = 0
   AND h.vigente_hasta IS NULL
   AND h.vigente_desde IS NOT NULL
   AND h.vigente_desde <= @corte_300;
 
 UPDATE historico_tasas h
 SET h.vigente_hasta = DATE_SUB(@corte_150, INTERVAL 1 DAY)
-WHERE h.is_deleted = 0
+WHERE h.borrado_logico = 0
   AND h.vigente_hasta IS NULL
   AND h.vigente_desde IS NOT NULL
   AND h.vigente_desde > @corte_300
@@ -372,7 +367,7 @@ FROM productos_financieros p
 WHERE NOT EXISTS (
   SELECT 1 FROM historico_tasas h
   WHERE h.id_producto = p.id_producto
-    AND h.is_deleted = 0
+    AND h.borrado_logico = 0
     AND COALESCE(h.vigente_hasta, '9999-12-31') >= @corte_300
     AND COALESCE(h.vigente_desde, '0001-01-01') <= DATE_SUB(@corte_150, INTERVAL 1 DAY)
 );
@@ -392,7 +387,7 @@ FROM productos_financieros p
 WHERE NOT EXISTS (
   SELECT 1 FROM historico_tasas h
   WHERE h.id_producto = p.id_producto
-    AND h.is_deleted = 0
+    AND h.borrado_logico = 0
     AND COALESCE(h.vigente_hasta, '9999-12-31') >= @corte_150
     AND COALESCE(h.vigente_desde, '0001-01-01') <= '9999-12-31'
 );
@@ -636,11 +631,11 @@ SELECT
   cr.id_credito,
   @id_analista_demo,
   ELT((cr.id_credito % 5)+1,
-      (SELECT id FROM dom_comp_pago WHERE codigo='Excelente'),
-      (SELECT id FROM dom_comp_pago WHERE codigo='Bueno'),
-      (SELECT id FROM dom_comp_pago WHERE codigo='Regular'),
-      (SELECT id FROM dom_comp_pago WHERE codigo='Malo'),
-      (SELECT id FROM dom_comp_pago WHERE codigo='Muy_Malo')),
+      (SELECT id FROM comp_pago WHERE codigo='Excelente'),
+      (SELECT id FROM comp_pago WHERE codigo='Bueno'),
+      (SELECT id FROM comp_pago WHERE codigo='Regular'),
+      (SELECT id FROM comp_pago WHERE codigo='Malo'),
+      (SELECT id FROM comp_pago WHERE codigo='Muy_Malo')),
   ROUND( ( (SELECT COALESCE(SUM(cu.monto_cuota - cu.monto_pagado),0) FROM cuotas cu WHERE cu.id_credito=cr.id_credito)
           / GREATEST(1,(SELECT ingresos_declarados FROM clientes WHERE id_cliente=cr.id_cliente)) ) * 100, 2),
   600 + (cr.id_credito % 300),
@@ -748,36 +743,36 @@ DROP TEMPORARY TABLE IF EXISTS tmp_cli_camp;
 -- 16) Ajustes de estados (consistencia)  ✔
 -- ------------------------------------------------------------------
 UPDATE cuotas cu
-JOIN (SELECT id AS id_pagada FROM dom_estado_cuota WHERE codigo='Pagada') d1
-JOIN (SELECT id AS id_pag_mora FROM dom_estado_cuota WHERE codigo='Pagada_Con_Mora') d2
-JOIN (SELECT id AS id_vencida FROM dom_estado_cuota WHERE codigo='Vencida') d3
-JOIN (SELECT id AS id_pend FROM dom_estado_cuota WHERE codigo='Pendiente') d4
+JOIN (SELECT id AS id_pagada FROM estado_cuota WHERE codigo='Pagada') d1
+JOIN (SELECT id AS id_pag_mora FROM estado_cuota WHERE codigo='Pagada_Con_Mora') d2
+JOIN (SELECT id AS id_vencida FROM estado_cuota WHERE codigo='Vencida') d3
+JOIN (SELECT id AS id_pend FROM estado_cuota WHERE codigo='Pendiente') d4
 SET cu.id_estado = CASE
   WHEN cu.monto_pagado >= cu.monto_cuota AND CURDATE() > cu.fecha_vencimiento THEN d2.id_pag_mora
   WHEN cu.monto_pagado >= cu.monto_cuota THEN d1.id_pagada
   WHEN CURDATE() > cu.fecha_vencimiento THEN d3.id_vencida
   ELSE d4.id_pend
 END
-WHERE cu.is_deleted = 0;
+WHERE cu.borrado_logico = 0;
 
 UPDATE creditos c
 JOIN (
   SELECT id_credito,
-         SUM(id_estado IN ((SELECT id FROM dom_estado_cuota WHERE codigo='Pagada'),
-                           (SELECT id FROM dom_estado_cuota WHERE codigo='Pagada_Con_Mora'))) pagadas,
-         SUM(id_estado = (SELECT id FROM dom_estado_cuota WHERE codigo='Vencida')) vencidas,
+         SUM(id_estado IN ((SELECT id FROM estado_cuota WHERE codigo='Pagada'),
+                           (SELECT id FROM estado_cuota WHERE codigo='Pagada_Con_Mora'))) pagadas,
+         SUM(id_estado = (SELECT id FROM estado_cuota WHERE codigo='Vencida')) vencidas,
          COUNT(*) total
-  FROM cuotas WHERE is_deleted=0 GROUP BY id_credito
+  FROM cuotas WHERE borrado_logico=0 GROUP BY id_credito
 ) x ON x.id_credito=c.id_credito
-JOIN (SELECT id AS id_act FROM dom_estado_credito WHERE codigo='Activo') ec_act
-JOIN (SELECT id AS id_mor FROM dom_estado_credito WHERE codigo='En_Mora') ec_mor
-JOIN (SELECT id AS id_pag FROM dom_estado_credito WHERE codigo='Pagado') ec_pag
+JOIN (SELECT id AS id_act FROM estado_credito WHERE codigo='Activo') ec_act
+JOIN (SELECT id AS id_mor FROM estado_credito WHERE codigo='En_Mora') ec_mor
+JOIN (SELECT id AS id_pag FROM estado_credito WHERE codigo='Pagado') ec_pag
 SET c.id_estado = CASE
   WHEN x.pagadas = x.total THEN ec_pag.id_pag
   WHEN x.vencidas > 0 THEN ec_mor.id_mor
   ELSE ec_act.id_act
 END
-WHERE c.is_deleted=0;
+WHERE c.borrado_logico=0;
 
 -- ------------------------------------------------------------------
 -- 17) Conteo por tabla (verificación)  ✔
@@ -800,22 +795,20 @@ UNION ALL SELECT 'evaluaciones_seguimiento', COUNT(*) FROM evaluaciones_seguimie
 UNION ALL SELECT 'campanias_promocionales', COUNT(*) FROM campanias_promocionales
 UNION ALL SELECT 'campanias_productos', COUNT(*) FROM campanias_productos
 UNION ALL SELECT 'campanias_clientes', COUNT(*) FROM campanias_clientes
-UNION ALL SELECT 'auditoria_tasas', COUNT(*) FROM auditoria_tasas
-UNION ALL SELECT 'auditoria_eventos', COUNT(*) FROM auditoria_eventos
-UNION ALL SELECT 'dom_estado_sucursal', COUNT(*) FROM dom_estado_sucursal
-UNION ALL SELECT 'dom_cargo_empleado', COUNT(*) FROM dom_cargo_empleado
-UNION ALL SELECT 'dom_estado_empleado', COUNT(*) FROM dom_estado_empleado
-UNION ALL SELECT 'dom_estado_cliente', COUNT(*) FROM dom_estado_cliente
-UNION ALL SELECT 'dom_situacion_laboral', COUNT(*) FROM dom_situacion_laboral
-UNION ALL SELECT 'dom_tipo_producto', COUNT(*) FROM dom_tipo_producto
-UNION ALL SELECT 'dom_estado_producto', COUNT(*) FROM dom_estado_producto
-UNION ALL SELECT 'dom_estado_campania', COUNT(*) FROM dom_estado_campania
-UNION ALL SELECT 'dom_estado_solicitud', COUNT(*) FROM dom_estado_solicitud
-UNION ALL SELECT 'dom_estado_credito', COUNT(*) FROM dom_estado_credito
-UNION ALL SELECT 'dom_estado_cuota', COUNT(*) FROM dom_estado_cuota
-UNION ALL SELECT 'dom_metodo_pago', COUNT(*) FROM dom_metodo_pago
-UNION ALL SELECT 'dom_estado_penalizacion', COUNT(*) FROM dom_estado_penalizacion
-UNION ALL SELECT 'dom_comp_pago', COUNT(*) FROM dom_comp_pago;
+UNION ALL SELECT 'estado_sucursal', COUNT(*) FROM estado_sucursal
+UNION ALL SELECT 'cargo_empleado', COUNT(*) FROM cargo_empleado
+UNION ALL SELECT 'estado_empleado', COUNT(*) FROM estado_empleado
+UNION ALL SELECT 'estado_cliente', COUNT(*) FROM estado_cliente
+UNION ALL SELECT 'situacion_laboral', COUNT(*) FROM situacion_laboral
+UNION ALL SELECT 'tipo_producto', COUNT(*) FROM tipo_producto
+UNION ALL SELECT 'estado_producto', COUNT(*) FROM estado_producto
+UNION ALL SELECT 'estado_campania', COUNT(*) FROM estado_campania
+UNION ALL SELECT 'estado_solicitud', COUNT(*) FROM estado_solicitud
+UNION ALL SELECT 'estado_credito', COUNT(*) FROM estado_credito
+UNION ALL SELECT 'estado_cuota', COUNT(*) FROM estado_cuota
+UNION ALL SELECT 'metodo_pago', COUNT(*) FROM metodo_pago
+UNION ALL SELECT 'estado_penalizacion', COUNT(*) FROM estado_penalizacion
+UNION ALL SELECT 'comp_pago', COUNT(*) FROM comp_pago;
 
 -- Limpieza helper
 DROP TABLE IF EXISTS helper_seq;
