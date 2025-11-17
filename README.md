@@ -1,233 +1,472 @@
-# Sistema de Gestión de Créditos y Cobranzas — Guía completa (DB + relaciones + 3 archivos)
-
-## Qué incluye
-
-* **`esquema_01.sql`**: crea toda la base (`gestion_creditos`) con catálogos (DOM), geografía escalable (provincias/ciudades), core de negocio, marketing, penalidades, auditoría centralizada, funciones, SPs y triggers.
-* **`seed_02.sql`**: carga **datos demo masivos** (≥60 por tabla objetivo) de forma determinista y consistente con el esquema (incluye helper de secuencias, parches anti-solape de tasas y generación de cuotas/pagos).
-* **`queries_03.sql`**: set de **reportes, vistas y transacciones** (incluye “Top” sin `LIMIT` usando subconsultas/ventanas, vistas de trabajo y 3 transacciones típicas).
+Va todo en uno, bien ordenado, con las entidades débiles marcadas y el textito final para el informe.
 
 ---
 
-## Visión general del modelo
+## 🧠 Reglas generales para dibujar el DER (esquema_01)
 
-```text
-[DOM catálogos]
-  dom_* : estados, tipos, métodos, cargos, etc. (tablas maestras finitas, sin ENUM)
-    ├─ dom_estado_sucursal     ├─ dom_estado_empleado   ├─ dom_estado_cliente
-    ├─ dom_cargo_empleado      ├─ dom_situacion_laboral ├─ dom_tipo_producto
-    ├─ dom_estado_producto     ├─ dom_estado_campania   ├─ dom_estado_solicitud
-    ├─ dom_estado_credito      ├─ dom_estado_cuota      ├─ dom_metodo_pago
-    ├─ dom_estado_penalizacion └─ dom_comp_pago
+* Notación **Chen**:
 
-[GEO escalable]
-  provincias(1) ──< ciudades(N)
-     ├─ sucursales(N)   (FK: id_provincia, id_ciudad + columnas texto compat.)
-     └─ clientes(N)     (FK: id_provincia, id_ciudad + columnas texto compat.)
+  * Entidades → **rectángulos**.
+  * Entidades débiles → **rectángulo doble**.
+  * Relaciones → **rombos** (dobles si son identificadoras de entidad débil).
+  * Atributos → **óvalos** (PK **subrayada**).
+* Entidades en **singular**: Cliente, Crédito, Cuota…
+* **NO dibujar FKs como atributos**: van como relaciones.
+* Podés **ocultar** en el DER:
 
-[NEGOCIO core]
-  clientes(1) ──< solicitudes_credito(N) ──1─> productos_financieros
-                   └─< solicitudes_garantes(N) >─┐
-  garantes ───────────────────────────────────────┘
-  solicitudes_credito(1) ──< creditos(1..N) ──< cuotas(1..N) ──< pagos(0..N)
-                                               └─< penalizaciones(0..N)
-
-[Marketing]
-  campanias_promocionales
-    ├─< campanias_productos (N:M con productos_financieros)
-    └─< campanias_clientes  (contactos y “conversiones” por fecha)
-  clientes.id_campania_ingreso  ← atribución primera conversión
-
-[Seguimiento]
-  evaluaciones_seguimiento (cliente/credito evaluado por analista, comp. pago)
-
-[Auditoría]
-  auditoria_eventos (auditoría centralizada INSERT/UPDATE/DELETE)
-  auditoria_tasas   (auditoria puntual de histórico de tasas)
-```
+  * borrado_logico, fecha_alta, fecha_modificacion, usuario_*, etc. (son técnicos).
 
 ---
 
-## Relaciones clave (cardinalidades y FKs)
+## 🔴 Entidades FUERTES vs DÉBILES
 
-### Catálogos (DOM)
+### ✅ Entidades FUERTES (rectángulo simple)
 
-* Todas las tablas de negocio referencian IDs de DOM (p.ej., `creditos.id_estado → dom_estado_credito.id`).
-* **Invariantes**: dominios son finitos, con `is_deleted` para baja lógica y `codigo` único.
+Se dibujan como entidades normales:
 
-### Geografía
+* **GEO / ORGANIZACIÓN**
 
-* `ciudades.id_provincia → provincias.id_provincia` (1:N).
-* `sucursales.id_provincia/id_ciudad` y `clientes.id_provincia/id_ciudad` → FKs a maestro geo.
-  Además, **columnas texto** `provincia/ciudad` en `clientes` y `ciudad` en `sucursales` para compatibilidad con seeds/imports; se normalizan con columnas *virtuales* `*_norm` e índices.
+  * Provincia
 
-### Negocio
+    * id_provincia (PK), nombre
+  * Ciudad
 
-* `solicitudes_credito`:
+    * id_ciudad (PK), nombre
+  * Sucursal
 
-  * `id_cliente → clientes`, `id_sucursal → sucursales`, `id_producto → productos_financieros`.
-  * `id_empleado_gestor` y (opcional) `id_analista` → `empleados`.
-  * `id_estado → dom_estado_solicitud`.
-* `solicitudes_garantes`:
+    * id_sucursal (PK), nombre, direccion, telefono, email, fecha_apertura
+  * Empleado
 
-  * **N:M** entre solicitudes y garantes. PK compuesta `(id_solicitud, id_garante)`.
-* `creditos`:
+    * id_empleado (PK), nombre, apellido, dni, email, telefono, fecha_ingreso, salario
+  * CargoEmpleado (dom_cargo_empleado)
 
-  * `id_solicitud`, `id_cliente`, `id_producto` (FKs) + `id_estado → dom_estado_credito`.
-  * `id_credito_refinanciado` (FK auto-referenciada) para encadenar refinanciaciones.
-* `cuotas`:
+    * id, codigo, nombre
+  * EstadoEmpleado (dom_estado_empleado)
 
-  * `id_credito` (FK), estado → `dom_estado_cuota`.
-  * `uq (id_credito, numero_cuota)` asegura plan único por crédito.
-* `pagos`:
+    * id, codigo, nombre
+  * EstadoSucursal (dom_estado_sucursal)
 
-  * `id_cuota` (FK), `id_metodo → dom_metodo_pago`. `numero_comprobante` único.
-* `penalizaciones`:
+    * id, codigo, nombre
 
-  * `id_cuota` (FK), `id_estado → dom_estado_penalizacion`.
-* `productos_financieros`:
+* **CLIENTE & GARANTE**
 
-  * `id_tipo → dom_tipo_producto`, `id_estado → dom_estado_producto`.
-  * `historico_tasas` (1:N) con ventanas de vigencia no solapadas (validado por trigger).
-* `evaluaciones_seguimiento`:
+  * Cliente
 
-  * `id_cliente`, `id_credito` y `id_analista → empleados` + `id_comp_pago → dom_comp_pago`.
+    * id_cliente (PK), nombre, apellido, dni, fecha_nacimiento, email, telefono, direccion, ingresos_declarados
 
-### Marketing
+    > Los campos texto de ciudad/provincia podés omitirlos (se representan por relaciones con Provincia/Ciudad).
+  * Garante
 
-* `campanias_promocionales`:
+    * id_garante (PK), nombre, apellido, dni, email, telefono, direccion, ingresos_declarados, relacion_cliente
+  * SituacionLaboral (dom_situacion_laboral)
 
-  * Estados → `dom_estado_campania`.
-  * `campanias_productos` (N:M con productos).
-  * `campanias_clientes` registra **contactos** por fecha/canal/resultado (PK: `id_campania, id_cliente, fecha_contacto`).
-* `clientes.id_campania_ingreso`:
+    * id, codigo, nombre
+  * EstadoCliente (dom_estado_cliente)
 
-  * atribuye “campaña de ingreso” (primer éxito). Se mantiene por SPs/transacciones.
+    * id, codigo, nombre
 
-### Auditoría
+* **PRODUCTO & TASAS**
 
-* `auditoria_eventos`:
+  * ProductoFinanciero
 
-  * columnas: `tabla, pk_nombre, pk_valor, operacion, usuario, evento_ts, datos_antes, datos_despues`.
-  * Triggers en `clientes`, `pagos`, `creditos` (extensible) llenan esta bitácora.
-* `auditoria_tasas`:
+    * id_producto (PK), nombre, descripcion, tasa_base, monto_minimo, monto_maximo, plazo_minimo_meses, plazo_maximo_meses, requisitos
+  * TipoProducto (dom_tipo_producto)
 
-  * soporte para cambios en `historico_tasas` (cuando aplique).
+    * id, codigo, nombre
+  * EstadoProducto (dom_estado_producto)
 
----
+    * id, codigo, nombre
+  * HistoricoTasas
 
-## Reglas de negocio implementadas
+    * id_historico (PK), tasa_anterior, tasa_nueva, fecha_cambio, motivo, usuario_responsable, vigente_desde, vigente_hasta
 
-* **Soft-delete** en todas las tablas: `is_deleted` + `deleted_at/by`.
-* **Guardia de pagos**: variable de sesión `@__allow_pago_insert` (trigger `trg_pago_calcular_demora`) **impide** inserts directos en `pagos`; obliga a usar `sp_registrar_pago`.
-* **Penalización automática**: trigger `trg_pagos_ai_penalizacion` calcula mora con `fn_calcular_mora` (tasa diaria 0.0005) y crea `penalizaciones` cuando corresponda.
-* **Evitar sobrepago**: `sp_registrar_pago` verifica que `p_monto` ≤ saldo de la cuota.
-* **Estado de cuota/credito**: triggers actualizan `cuotas.id_estado` y resumen en `creditos.id_estado` (Activo, En_Mora, Pagado).
-* **Aprobación exige garantes**: trigger `trg_sol_no_aprobar_sin_garante`.
-* **Histórico de tasas sin solapamiento**: trigger `trg_hist_no_solape` + **backfill** de vigencias.
-* **Generación de cuotas (francés)**: `sp_generar_cuotas`.
-* **Aprobación de solicitud**: `sp_aprobar_solicitud` valida cargo del analista, límites del producto, garantes, tasa vigente (fallback `fn_tasa_vigente`) y crea crédito + plan de cuotas.
-* **Refinanciación segura**: `sp_refinanciar_credito` (envuelta por `sp_tx_refinanciar_si_mora`).
+* **CAMPAÑAS**
 
----
+  * CampañaPromocional
 
-## Índices y performance (destacados)
+    * id_campania (PK), nombre, descripcion, tasa_promocional, fecha_inicio, fecha_fin, descuento_porcentaje, presupuesto, inversion_realizada, clientes_captados
+  * EstadoCampania (dom_estado_campania)
 
-* Índices compuestos por acceso típico:
+    * id, codigo, nombre
 
-  * `solicitudes_credito(id_producto, fecha_solicitud, id_estado)`
-  * `creditos(id_cliente, id_estado, fecha_inicio)`
-  * `cuotas(id_estado, fecha_vencimiento)` y `(id_credito, is_deleted)`
-  * `clientes(provincia_norm, id_estado)` y `(id_provincia, id_ciudad)`
-  * Marketing: `campanias_clientes(id_campania, id_cliente, fecha_contacto)`
-* **Generated columns** para normalización paulatina de `clientes.provincia/ciudad`.
+* **CICLO DE CRÉDITO**
 
----
+  * SolicitudCredito
 
-## Los 3 archivos (qué hace cada uno)
+    * id_solicitud (PK), monto_solicitado, plazo_meses, destino_credito, fecha_solicitud, puntaje_riesgo, observaciones, fecha_evaluacion
+  * Credito
 
-### 1) `esquema_01.sql`
+    * id_credito (PK), monto_otorgado, tasa_interes, plazo_meses, fecha_inicio, fecha_finalizacion
+  * Cuota
 
-* Crea **todas** las tablas con FKs, checks e índices.
-* Define **funciones** (`fn_calcular_mora`, `fn_tasa_vigente`), **procedures** (aprobar solicitud, generar cuotas, registrar pago, refinanciar, asignar evaluación).
-* Registra **triggers** de metadatos y de negocio (guardia de pagos, mora, estados, anti-solape).
-* Incluye **usuarios** de ejemplo (`admin_creditos`, `analista_credito`, `gestor_cobranza`) y `GRANT` mínimos.
+    * id_cuota (PK), numero_cuota, fecha_vencimiento, monto_cuota, monto_capital, monto_interes, saldo_pendiente, monto_pagado
+  * Pago
 
-### 2) `seed_02.sql`
+    * id_pago (PK), fecha_pago, monto_pagado, dias_demora, numero_comprobante, observaciones
+  * Penalizacion
 
-* Limpia datos respetando FKs (mantiene objetos).
-* Genera secuencia `helper_seq` (1..5000) para poblar masivamente.
-* Inserta **DOM** (catálogos) y obtiene IDs en variables.
-* **Provincias(60)**, **Sucursales(80)**, **Empleados(300)**, **Campañas(60)**,
-  **Clientes(500)** (con mezcla de estados, situaciones, atribuciones),
-  **Productos(60)** + **historico_tasas** (3 por producto + parche de vigencias),
-  **Garantes(300)**, **Solicitudes(600)** + vínculo de **Garantes**,
-  **Créditos** (todas las aprobadas) → **Cuotas** (vía SP),
-  **Pagos** (mix: parciales, completos, con/ sin mora) → penalizaciones automáticas,
-  **Evaluaciones**, **Campaña–Producto**, **Campaña–Cliente** (~2000 contactos).
-* Recalcula estados de cuotas/créditos y contadores de campañas.
+    * id_penalizacion (PK), dias_mora, monto_penalizacion, tasa_mora, fecha_aplicacion
+  * EstadoSolicitud (dom_estado_solicitud)
+  * EstadoCredito (dom_estado_credito)
+  * EstadoCuota (dom_estado_cuota)
+  * MetodoPago (dom_metodo_pago)
+  * EstadoPenalizacion (dom_estado_penalizacion)
 
-### 3) `queries_03.sql`
+* **EVALUACIÓN**
 
-* **Reportes (Q1–Q30)**: cartera, mora por sucursal, deuda por cliente, top por producto, productividad de analistas, penalizaciones, próximos vencimientos, tasas, tiempos de evaluación, avance de créditos, morosos, eficacia/ROAS/atribución de campañas, cohortes, correlaciones, etc.
+  * EvaluacionSeguimiento
 
-  * “Top X” **sin** `LIMIT` cuando corresponde: usa **ventanas** (`DENSE_RANK`) o **subconsultas** de ranking (para cumplir la devolución del profe).
-* **Vistas**:
+    * id_evaluacion (PK), fecha_evaluacion, nivel_endeudamiento, puntaje_actualizado, observaciones, recomendaciones
+  * CompPago (dom_comp_pago)
 
-  * `vw_cartera_cobranza`, `vw_solicitudes_analista`, `vw_creditos_avance`,
-    `vw_kpi_campanias`, `vw_atribucion_ultimo_toque`.
-* **Transacciones (T1–T3)**:
+    * id, codigo, nombre
 
-  * `sp_tx_pagar_primeras_cuotas(p_id_cliente)` (usa guardia/validación).
-  * `sp_tx_refinanciar_si_mora(...)` (envoltura segura).
-  * `sp_tx_registrar_contacto_campania(...)` (contacto + asignación de ingreso + recálculo captados).
+* **(Opcional) Auditoría**
+
+  * AuditoriaTasas
+
+    * id_aud, tasa, vigente_desde, vigente_hasta, operacion, audit_ts…
+  * AuditoriaEventos
+
+    * id_audit, tabla, pk_nombre, pk_valor, operacion, usuario, evento_ts, datos_antes, datos_despues…
 
 ---
 
-## Flujo típico (end-to-end)
+### ⚠ Entidades DÉBILES (rectángulo doble)
 
-1. **Ingreso** de cliente → **Solicitud** (gestor) con **garantes**.
-2. **Analista** evalúa y **aprueba** (SP), se crea **Crédito + Cuotas**.
-3. Cliente **paga** (SP): se calcula demora; si hay mora ⇒ **Penalización**.
-4. **Estados** de cuotas/crédito se recalculan automáticamente.
-5. **Marketing** empuja contactos en `campanias_clientes`; si “Convirtió”, se setea `id_campania_ingreso` y se actualiza `clientes_captados`.
-6. **Reportes** consumen vistas y consultas de `queries_03.sql`.
+Dibujalas con **doble rectángulo** y PK **compuesta solo por FKs** (parciales):
 
----
+1. **CampañaProducto** (`campanias_productos`) – N:M entre Campaña y Producto
 
-## Normalización y escalabilidad
+   * (PK parcial) id_campania
+   * (PK parcial) id_producto
 
-* **BCNF/3FN** en core; DOM evita `ENUM`.
-* Geografía **escalable** (`provincias/ciudades`) con FKs **y** columnas texto de compatibilidad + columnas normalizadas virtuales para migraciones sin “big bang”.
-* **Soft-delete** permite auditoría y recuperabilidad.
-* **Índices** alineados a lecturas OLTP/OLAP ligeras; vistas para BI liviano.
+2. **CampañaCliente** (`campanias_clientes`) – N:M entre Campaña y Cliente
 
----
+   * (PK parcial) id_campania
+   * (PK parcial) id_cliente
+   * (PK parcial) fecha_contacto
+   * canal
+   * resultado
 
-## Buenas prácticas incorporadas
+3. **SolicitudGarante** (`solicitudes_garantes`) – N:M entre Solicitud y Garante
 
-* “**Top X**” mediante ventanas/subconsultas (no `LIMIT` a secas).
-* **Triggers** minimalistas y **SPs** para lógica de negocio; **guard rails** para datos críticos (pagos, tasas).
-* **Auditoría centralizada** en JSON (fácil de consultar por rango de fechas/tabla/PK).
-* **Reproducibilidad** del seed (funciona en MySQL 8; sin `ENGINE/CHARSET` explícitos).
+   * (PK parcial) id_solicitud
+   * (PK parcial) id_garante
+   * fecha_vinculacion
+
+Las tres van con **rectángulo doble** y conectadas con **rombos identificadores (dobles)** a sus entidades fuertes.
 
 ---
 
-## Cómo ejecutar (orden recomendado)
+## 1️⃣ Bloque GEO (arriba izquierda)
 
-1. `esquema_01.sql`
-2. `seed_02.sql`
-3. `queries_03.sql` (vistas/consultas/transacciones)
+### Entidades (fuertes)
 
-> Si vas a probar transacciones de pago, hacelo con `CALL sp_tx_pagar_primeras_cuotas(<id_cliente>);` y mirá las vistas/consultas (`vw_cartera_cobranza`, Q9, Q12).
+* Provincia (id_provincia, nombre)
+* Ciudad (id_ciudad, nombre)
+* Sucursal (id_sucursal, nombre, direccion, telefono, email, fecha_apertura)
+* Empleado (id_empleado, nombre, apellido, dni, email, telefono, fecha_ingreso, salario)
+* CargoEmpleado, EstadoEmpleado, EstadoSucursal (dominios)
+
+### Relaciones
+
+* **Provincia —(tiene)→ Ciudad**
+
+  * 1 Provincia — N Ciudades (ciudades.id_provincia)
+
+* **Provincia —(tiene)→ Sucursal**
+
+  * 1 Provincia — N Sucursales (sucursales.id_provincia)
+
+* **Ciudad —(tiene)→ Sucursal**
+
+  * 0..1 Ciudad — N Sucursales (sucursales.id_ciudad puede ser NULL)
+
+* **Sucursal —(emplea a)→ Empleado**
+
+  * 1 Sucursal — N Empleados (empleados.id_sucursal)
+
+* **CargoEmpleado —(clasifica)→ Empleado**
+
+  * 1 Cargo — N Empleados
+
+* **EstadoEmpleado —(clasifica)→ Empleado**
+
+  * 1 EstadoEmpleado — N Empleados
+
+* **EstadoSucursal —(clasifica)→ Sucursal**
+
+  * 1 EstadoSucursal — N Sucursales
 
 ---
 
-## Notas de diseño
+## 2️⃣ Bloque CLIENTE & GARANTE (centro izquierda)
 
-* **Atribución de campañas**:
+### Entidades
 
-  * `campanias_clientes` guarda **todos** los toques;
-  * `clientes.id_campania_ingreso` representa **primer** toque exitoso (mantenido por `sp_tx_registrar_contacto_campania`).
-  * `vw_atribucion_ultimo_toque` muestra aparte el “last-touch”.
-* **Historico de tasas**: ventanas **no solapadas**; función `fn_tasa_vigente` decide la tasa aplicable por fecha.
-* **Estados de cliente** (Activo/Moroso/Bloqueado) conviven con estado de crédito/cuota; los reportes los combinan según necesidad.
+* Cliente (fuerte)
+* Garante (fuerte)
+* SituacionLaboral (dom)
+* EstadoCliente (dom)
+
+### Relaciones
+
+* **Provincia —(tiene)→ Cliente**
+
+  * 1 Provincia — N Clientes (clientes.id_provincia)
+
+* **Ciudad —(tiene)→ Cliente**
+
+  * 0..1 Ciudad — N Clientes (clientes.id_ciudad)
+
+* **SituacionLaboral —(tiene)→ Cliente**
+
+  * 0..1 SituacionLaboral — N Clientes (clientes.id_situacion_laboral)
+
+* **EstadoCliente —(clasifica)→ Cliente**
+
+  * 1 EstadoCliente — N Clientes
+
+*(Garante por ahora solo se usa en la relación N:M de abajo).*
+
+---
+
+## 3️⃣ Bloque PRODUCTO & TASAS (arriba centro)
+
+### Entidades
+
+* ProductoFinanciero (fuerte)
+* TipoProducto (dom)
+* EstadoProducto (dom)
+* HistoricoTasas (fuerte)
+
+### Relaciones
+
+* **TipoProducto —(clasifica)→ ProductoFinanciero**
+
+  * 1 Tipo — N Productos
+
+* **EstadoProducto —(clasifica)→ ProductoFinanciero**
+
+  * 1 Estado — N Productos
+
+* **ProductoFinanciero —(tiene)→ HistoricoTasas**
+
+  * 1 Producto — N Históricos
+
+---
+
+## 4️⃣ Bloque CAMPAÑAS (arriba derecha / derecha centro)
+
+### Entidades
+
+* CampañaPromocional (fuerte)
+* EstadoCampania (dom)
+* **CampañaProducto** (débil, N:M)
+* **CampañaCliente** (débil, N:M)
+
+### Relaciones
+
+* **EstadoCampania —(clasifica)→ CampañaPromocional**
+
+  * 1 Estado — N Campañas
+
+* **CampañaPromocional —◇◇→ CampañaProducto ←◇◇— ProductoFinanciero**
+
+  * Ambas relaciones **identificadoras** (doble rombo)
+  * 1 Campaña — N CampañaProducto
+  * 1 Producto — N CampañaProducto
+
+* **CampañaPromocional —◇◇→ CampañaCliente ←◇◇— Cliente**
+
+  * N:M con entidad débil CampañaCliente
+  * 1 Campaña — N CampañaCliente
+  * 1 Cliente — N CampañaCliente
+
+  Atributos en CampañaCliente:
+
+  * (PK parciales) id_campania, id_cliente, fecha_contacto
+  * canal, resultado
+
+* **CampañaPromocional —(origen_de)→ Cliente** (id_campania_ingreso)
+
+  * 0..1 Campaña — N Clientes
+  * Dibujo: rombo “origina” entre CampañaPromocional y Cliente.
+
+---
+
+## 5️⃣ Bloque SOLICITUD → CRÉDITO → CUOTA → PAGO/PENALIZACIÓN (línea central)
+
+Pone esto en el centro de la hoja.
+
+### Entidades
+
+* SolicitudCredito
+* Credito
+* Cuota
+* Pago
+* Penalizacion
+* EstadoSolicitud (dom)
+* EstadoCredito (dom)
+* EstadoCuota (dom)
+* MetodoPago (dom)
+* EstadoPenalizacion (dom)
+
+### Relaciones
+
+1. **Cliente —(solicita)→ SolicitudCredito**
+
+   * 1 Cliente — N Solicitudes
+
+2. **Sucursal —(recibe)→ SolicitudCredito**
+
+   * 1 Sucursal — N Solicitudes
+
+3. **Empleado —(gestiona)→ SolicitudCredito**
+
+   * 1 Empleado — N Solicitudes como gestor (id_empleado_gestor)
+
+4. **Empleado —(analiza)→ SolicitudCredito**
+
+   * 0..1 Empleado — N Solicitudes como analista (id_analista)
+
+5. **ProductoFinanciero —(es_solicitado_en)→ SolicitudCredito**
+
+   * 1 Producto — N Solicitudes
+
+6. **EstadoSolicitud —(clasifica)→ SolicitudCredito**
+
+   * 1 Estado — N Solicitudes
+
+7. **SolicitudCredito —(genera)→ Credito**
+
+   * 1 Solicitud — 0..1 Crédito (conceptual: 1→1)
+
+8. **Cliente —(posee)→ Credito**
+
+   * 1 Cliente — N Créditos
+
+9. **ProductoFinanciero —(se_otorga_en)→ Credito**
+
+   * 1 Producto — N Créditos
+
+10. **EstadoCredito —(clasifica)→ Credito**
+
+    * 1 Estado — N Créditos
+
+11. **Credito —(se_divide_en)→ Cuota**
+
+    * 1 Crédito — N Cuotas
+
+12. **EstadoCuota —(clasifica)→ Cuota**
+
+    * 1 Estado — N Cuotas
+
+13. **Cuota —(recibe)→ Pago**
+
+    * 1 Cuota — N Pagos
+
+14. **MetodoPago —(se_utiliza_en)→ Pago**
+
+    * 1 Método — N Pagos
+
+15. **Cuota —(genera)→ Penalizacion**
+
+    * 1 Cuota — N Penalizaciones
+
+16. **EstadoPenalizacion —(clasifica)→ Penalizacion**
+
+    * 1 Estado — N Penalizaciones
+
+17. **Credito —(es_refinanciado_por)→ Credito** (autorelación)
+
+    * 1 Crédito original — 0..N Créditos nuevos
+    * Dibujo: rombo “refinancia” entre Crédito y Crédito.
+
+---
+
+## 6️⃣ Bloque SOLICITUD–GARANTES (abajo centro) – ENTIDAD DÉBIL
+
+### Entidad débil: SolicitudGarante
+
+* (PK parcial) id_solicitud
+* (PK parcial) id_garante
+* fecha_vinculacion
+
+### Relación N:M (con entidad débil)
+
+* **SolicitudCredito —◇◇→ SolicitudGarante ←◇◇— Garante**
+
+  * 1 Solicitud — N SolicitudGarante
+  * 1 Garante — N SolicitudGarante
+
+---
+
+## 7️⃣ Bloque EVALUACIÓN Y COMPORTAMIENTO PAGO (abajo derecha)
+
+### Entidades
+
+* EvaluacionSeguimiento (fuerte)
+* CompPago (dom)
+
+### Relaciones
+
+* **Cliente —(es_evaluado_en)→ EvaluacionSeguimiento**
+
+  * 1 Cliente — N Evaluaciones
+
+* **Credito —(se_evalua_en)→ EvaluacionSeguimiento**
+
+  * 1 Crédito — N Evaluaciones
+
+* **Empleado (Analista) —(analiza)→ EvaluacionSeguimiento**
+
+  * 1 Empleado — N Evaluaciones
+
+* **CompPago —(clasifica)→ EvaluacionSeguimiento**
+
+  * 1 CompPago — N Evaluaciones
+
+---
+
+## 8️⃣ Auditoría (opcional en el DER)
+
+Podés:
+
+* No dibujar AuditoriaTasas y AuditoriaEventos, y solo mencionarlas en el informe.
+* O ponerlas en un módulo técnico aparte con una nota:
+
+> “Tablas técnicas de auditoría, que registran cambios sobre varias entidades del modelo.”
+
+---
+
+## 9️⃣ Layout sugerido (dónde va cada bloque en la hoja)
+
+* **Arriba izquierda:** Provincia – Ciudad – Sucursal – Empleado + (EstadoSucursal, CargoEmpleado, EstadoEmpleado).
+* **Centro izquierda:** Cliente – Garante + (SituacionLaboral, EstadoCliente) + relaciones a Provincia/Ciudad.
+* **Arriba centro:** ProductoFinanciero + TipoProducto + EstadoProducto + HistoricoTasas.
+* **Arriba derecha / derecha centro:**
+
+  * CampañaPromocional + EstadoCampania (fuertes).
+  * Debajo/lateral: **CampañaProducto** y **CampañaCliente** (doble rectángulo, entidades débiles, con rombos dobles hacia Campaña/Producto/Cliente).
+* **Centro horizontal:**
+  Cliente → SolicitudCredito → Credito → Cuota → Pago / Penalizacion.
+* **Abajo centro:**
+  **SolicitudGarante** (doble rectángulo) enlazando SolicitudCredito y Garante.
+* **Abajo derecha:**
+  EvaluacionSeguimiento + CompPago.
+* **Muy abajo o al costado:**
+  AuditoriaTasas y AuditoriaEventos (si las mostrás).
+
+---
+
+## 📝 Textito para el informe (copiar/pegar)
+
+> El modelo entidad–relación se organizó en módulos funcionales: geo–organizativo (provincias, ciudades, sucursales y empleados), clientes y garantes, productos financieros y su histórico de tasas, ciclo de vida del crédito (solicitudes, créditos, cuotas, pagos y penalizaciones), campañas de marketing y evaluación de comportamiento de pago.
+>
+> A partir del esquema físico se identificaron tanto entidades fuertes, con identidad propia (por ejemplo, Cliente, Crédito, ProductoFinanciero o CampañaPromocional), como tres entidades débiles: **CampañaProducto**, **CampañaCliente** y **SolicitudGarante**, cuyas claves primarias están compuestas únicamente por claves foráneas hacia entidades fuertes y se representan mediante rectángulos dobles y relaciones identificadoras de tipo N:M.
+>
+> Además, se incorporaron tablas de dominio (estados, tipos, situaciones laborales, métodos de pago, etc.) modeladas como entidades que “clasifican” a las entidades principales, lo que permite desacoplar la lógica de negocio de los valores de catálogo. Finalmente, las tablas técnicas de auditoría se consideraron parte de la capa de implementación y, en caso de representarse, se agrupan en un módulo separado para no sobrecargar la vista conceptual del DER.
+
+Con esto ya podés dibujar el DER 1:1 con esquema_01 y justificarlo en el informe.
