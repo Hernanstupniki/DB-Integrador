@@ -9,23 +9,22 @@ USE gestion_creditos;
 -- =========================
 -- Variables de dominio (solo CONSULTAS y SPs; NO en VISTAS)
 -- =========================
-SET @id_cuo_pend   = (SELECT id FROM dom_estado_cuota     WHERE codigo='Pendiente');
-SET @id_cuo_pag    = (SELECT id FROM dom_estado_cuota     WHERE codigo='Pagada');
-SET @id_cuo_venc   = (SELECT id FROM dom_estado_cuota     WHERE codigo='Vencida');
-SET @id_cuo_pagmor = (SELECT id FROM dom_estado_cuota     WHERE codigo='Pagada_Con_Mora');
+SET @id_cuo_pend   = (SELECT id FROM estado_cuota     WHERE codigo='Pendiente');
+SET @id_cuo_pag    = (SELECT id FROM estado_cuota     WHERE codigo='Pagada');
+SET @id_cuo_venc   = (SELECT id FROM estado_cuota     WHERE codigo='Vencida');
+SET @id_cuo_pagmor = (SELECT id FROM estado_cuota     WHERE codigo='Pagada_Con_Mora');
 
-SET @id_cre_act = (SELECT id FROM dom_estado_credito WHERE codigo='Activo');
-SET @id_cre_mor = (SELECT id FROM dom_estado_credito WHERE codigo='En_Mora');
-SET @id_cre_pag = (SELECT id FROM dom_estado_credito WHERE codigo='Pagado');
+SET @id_cre_act = (SELECT id FROM estado_credito WHERE codigo='Activo');
+SET @id_cre_mor = (SELECT id FROM estado_credito WHERE codigo='En_Mora');
+SET @id_cre_pag = (SELECT id FROM estado_credito WHERE codigo='Pagado');
 
-SET @id_sol_pend = (SELECT id FROM dom_estado_solicitud WHERE codigo='Pendiente');
-SET @id_sol_enrev= (SELECT id FROM dom_estado_solicitud WHERE codigo='En_Revision');
-SET @id_sol_aprb = (SELECT id FROM dom_estado_solicitud WHERE codigo='Aprobada');
-SET @id_sol_rech = (SELECT id FROM dom_estado_solicitud WHERE codigo='Rechazada');
+SET @id_sol_pend = (SELECT id FROM estado_solicitud WHERE codigo='Pendiente');
+SET @id_sol_enrev= (SELECT id FROM estado_solicitud WHERE codigo='En_Revision');
+SET @id_sol_aprb = (SELECT id FROM estado_solicitud WHERE codigo='Aprobada');
+SET @id_sol_rech = (SELECT id FROM estado_solicitud WHERE codigo='Rechazada');
 
-SET @id_cargo_an = (SELECT id FROM dom_cargo_empleado WHERE codigo='Analista_Credito');
-SET @id_met_trf  = (SELECT id FROM dom_metodo_pago WHERE codigo='Transferencia');
-
+SET @id_cargo_an = (SELECT id FROM cargo_empleado WHERE codigo='Analista_Credito');
+SET @id_met_trf  = (SELECT id FROM metodo_pago    WHERE codigo='Transferencia');
 
 
 /* =======================
@@ -39,10 +38,10 @@ SELECT
   COUNT(*)                         AS cant_creditos,
   ROUND(SUM(c.monto_otorgado), 2)  AS monto_total
 FROM creditos c
-JOIN productos_financieros pf ON pf.id_producto = c.id_producto AND pf.is_deleted=0
-JOIN dom_tipo_producto  tp     ON tp.id = pf.id_tipo
-JOIN dom_estado_credito ec     ON ec.id = c.id_estado
-WHERE c.is_deleted = 0
+JOIN productos_financieros pf ON pf.id_producto = c.id_producto AND pf.borrado_logico=0
+JOIN tipo_producto  tp        ON tp.id = pf.id_tipo
+JOIN estado_credito ec        ON ec.id = c.id_estado
+WHERE c.borrado_logico = 0
 GROUP BY tp.codigo, ec.codigo
 ORDER BY tp.codigo,
          FIELD(ec.codigo,'Activo','En_Mora','Refinanciado','Pagado','Cancelado');
@@ -53,10 +52,10 @@ SELECT
   s.nombre AS sucursal,
   ROUND(AVG(GREATEST(0, DATEDIFF(CURDATE(), cu.fecha_vencimiento))), 2) AS mora_promedio_dias
 FROM sucursales s
-JOIN solicitudes_credito sc ON sc.id_sucursal = s.id_sucursal AND sc.is_deleted=0
-JOIN creditos c            ON c.id_solicitud = sc.id_solicitud AND c.is_deleted=0
-JOIN cuotas cu             ON cu.id_credito  = c.id_credito   AND cu.is_deleted=0
-WHERE s.is_deleted = 0
+JOIN solicitudes_credito sc ON sc.id_sucursal = s.id_sucursal AND sc.borrado_logico=0
+JOIN creditos c            ON c.id_solicitud = sc.id_solicitud AND c.borrado_logico=0
+JOIN cuotas cu             ON cu.id_credito  = c.id_credito   AND cu.borrado_logico=0
+WHERE s.borrado_logico = 0
   AND cu.id_estado IN (@id_cuo_venc, @id_cuo_pagmor)
 GROUP BY s.id_sucursal, s.nombre
 ORDER BY mora_promedio_dias DESC;
@@ -66,12 +65,14 @@ WITH deuda AS (
   SELECT
     cl.id_cliente,
     CONCAT(cl.nombre,' ',cl.apellido) AS cliente,
-    ROUND(SUM(CASE WHEN cu.id_estado IN (@id_cuo_pend,@id_cuo_venc)
-                   THEN (cu.monto_cuota - COALESCE(cu.monto_pagado,0)) ELSE 0 END), 2) AS deuda_vigente
+    ROUND(SUM(
+      CASE WHEN cu.id_estado IN (@id_cuo_pend,@id_cuo_venc)
+           THEN (cu.monto_cuota - COALESCE(cu.monto_pagado,0)) ELSE 0 END
+    ), 2) AS deuda_vigente
   FROM clientes cl
-  JOIN creditos cr ON cr.id_cliente = cl.id_cliente AND cr.is_deleted=0
-  JOIN cuotas cu   ON cu.id_credito = cr.id_credito AND cu.is_deleted=0
-  WHERE cl.is_deleted = 0
+  JOIN creditos cr ON cr.id_cliente = cl.id_cliente AND cr.borrado_logico=0
+  JOIN cuotas cu   ON cu.id_credito = cr.id_credito AND cu.borrado_logico=0
+  WHERE cl.borrado_logico = 0
   GROUP BY cl.id_cliente, cliente
   HAVING deuda_vigente > 0
 )
@@ -92,9 +93,9 @@ SELECT
   cp.clientes_captados,
   COUNT(DISTINCT cr.id_credito) AS creditos_generados
 FROM campanias_promocionales cp
-LEFT JOIN clientes  cl ON cl.id_campania_ingreso = cp.id_campania AND cl.is_deleted = 0
-LEFT JOIN creditos  cr ON cr.id_cliente = cl.id_cliente AND cr.is_deleted = 0
-WHERE cp.is_deleted = 0
+LEFT JOIN clientes  cl ON cl.id_campania_ingreso = cp.id_campania AND cl.borrado_logico = 0
+LEFT JOIN creditos  cr ON cr.id_cliente = cl.id_cliente AND cr.borrado_logico = 0
+WHERE cp.borrado_logico = 0
 GROUP BY cp.id_campania, cp.nombre, cp.clientes_captados
 ORDER BY creditos_generados DESC, cp.clientes_captados DESC;
 
@@ -107,11 +108,11 @@ WITH deuda AS (
     ROUND(SUM(CASE WHEN cu.id_estado IN (@id_cuo_pend,@id_cuo_venc)
               THEN (cu.monto_cuota - COALESCE(cu.monto_pagado,0)) ELSE 0 END), 2) AS deuda
   FROM sucursales s
-  JOIN solicitudes_credito sc ON sc.id_sucursal = s.id_sucursal AND sc.is_deleted = 0
-  JOIN creditos cr            ON cr.id_solicitud = sc.id_solicitud AND cr.is_deleted = 0
-  JOIN clientes cl            ON cl.id_cliente   = sc.id_cliente   AND cl.is_deleted = 0
-  JOIN cuotas cu              ON cu.id_credito   = cr.id_credito   AND cu.is_deleted = 0
-  WHERE s.is_deleted = 0
+  JOIN solicitudes_credito sc ON sc.id_sucursal = s.id_sucursal AND sc.borrado_logico = 0
+  JOIN creditos cr            ON cr.id_solicitud = sc.id_solicitud AND cr.borrado_logico = 0
+  JOIN clientes cl            ON cl.id_cliente   = sc.id_cliente   AND cl.borrado_logico = 0
+  JOIN cuotas cu              ON cu.id_credito   = cr.id_credito   AND cu.borrado_logico = 0
+  WHERE s.borrado_logico = 0
   GROUP BY s.id_sucursal, cl.id_cliente, cliente
 )
 SELECT *
@@ -129,8 +130,8 @@ WITH tot AS (
     pf.id_producto, pf.nombre,
     ROUND(SUM(c.monto_otorgado), 2) AS total_otorgado
   FROM productos_financieros pf
-  JOIN creditos c ON c.id_producto = pf.id_producto AND c.is_deleted=0
-  WHERE pf.is_deleted = 0
+  JOIN creditos c ON c.id_producto = pf.id_producto AND c.borrado_logico=0
+  WHERE pf.borrado_logico = 0
   GROUP BY pf.id_producto, pf.nombre
 )
 SELECT t1.*
@@ -152,9 +153,9 @@ SELECT
   SUM(sc.id_estado=@id_sol_aprb)  AS apr,
   SUM(sc.id_estado=@id_sol_rech)  AS rec
 FROM empleados e
-JOIN dom_cargo_empleado ce ON ce.id=e.id_cargo AND ce.codigo='Analista_Credito'
-LEFT JOIN solicitudes_credito sc ON sc.id_analista = e.id_empleado AND sc.is_deleted = 0
-WHERE e.is_deleted = 0
+JOIN cargo_empleado ce ON ce.id=e.id_cargo AND ce.codigo='Analista_Credito'
+LEFT JOIN solicitudes_credito sc ON sc.id_analista = e.id_empleado AND sc.borrado_logico = 0
+WHERE e.borrado_logico = 0
 GROUP BY e.id_empleado, analista
 ORDER BY apr DESC, rec DESC;
 
@@ -163,7 +164,7 @@ SELECT
   DATE_FORMAT(p.fecha_aplicacion, '%Y-%m') AS yymm,
   ROUND(SUM(p.monto_penalizacion), 2) AS penalizacion_mes
 FROM penalizaciones p
-WHERE p.is_deleted = 0
+WHERE p.borrado_logico = 0
   AND p.fecha_aplicacion >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
 GROUP BY yymm
 ORDER BY yymm DESC;
@@ -173,10 +174,10 @@ SELECT
   cu.id_cuota, cu.fecha_vencimiento, ecu.codigo AS estado_cuota,
   cr.id_credito, cl.id_cliente, CONCAT(cl.nombre,' ',cl.apellido) AS cliente
 FROM cuotas cu
-JOIN dom_estado_cuota ecu ON ecu.id=cu.id_estado
-JOIN creditos cr ON cr.id_credito = cu.id_credito AND cr.is_deleted=0
-JOIN clientes cl ON cl.id_cliente = cr.id_cliente AND cl.is_deleted=0
-WHERE cu.is_deleted = 0
+JOIN estado_cuota ecu ON ecu.id=cu.id_estado
+JOIN creditos cr ON cr.id_credito = cu.id_credito AND cr.borrado_logico=0
+JOIN clientes cl ON cl.id_cliente = cr.id_cliente AND cl.borrado_logico=0
+WHERE cu.borrado_logico = 0
   AND cu.fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 15 DAY)
 ORDER BY cu.fecha_vencimiento, cliente;
 
@@ -187,7 +188,7 @@ SELECT
   fn_tasa_vigente(pf.id_producto, CURDATE()) AS tasa_vigente_hoy,
   ROUND(fn_tasa_vigente(pf.id_producto, CURDATE()) - pf.tasa_base, 3) AS delta
 FROM productos_financieros pf
-WHERE pf.is_deleted = 0
+WHERE pf.borrado_logico = 0
 ORDER BY ABS(delta) DESC;
 
 -- Q11. Tiempo promedio de evaluación por estado
@@ -195,8 +196,8 @@ SELECT
   es.codigo AS estado_solicitud,
   ROUND(AVG(DATEDIFF(COALESCE(sc.fecha_evaluacion, NOW()), sc.fecha_solicitud)), 2) AS dias_promedio
 FROM solicitudes_credito sc
-JOIN dom_estado_solicitud es ON es.id=sc.id_estado
-WHERE sc.is_deleted = 0
+JOIN estado_solicitud es ON es.id=sc.id_estado
+WHERE sc.borrado_logico = 0
 GROUP BY es.codigo
 ORDER BY dias_promedio DESC;
 
@@ -207,8 +208,8 @@ WITH avance AS (
     SUM(LEAST(COALESCE(cu.monto_pagado,0), cu.monto_cuota)) AS pagado_cap,
     SUM(cu.monto_cuota) AS deuda_plan
   FROM creditos c
-  JOIN cuotas cu ON cu.id_credito = c.id_credito AND cu.is_deleted=0
-  WHERE c.is_deleted = 0
+  JOIN cuotas cu ON cu.id_credito = c.id_credito AND cu.borrado_logico=0
+  WHERE c.borrado_logico = 0
   GROUP BY c.id_credito
 ),
 calc AS (
@@ -234,10 +235,10 @@ SELECT
   ROUND(SUM(CASE WHEN cu.id_estado IN (@id_cuo_pend,@id_cuo_venc)
             THEN (cu.monto_cuota - COALESCE(cu.monto_pagado,0)) ELSE 0 END), 2) AS deuda
 FROM clientes cl
-JOIN dom_estado_cliente ec ON ec.id=cl.id_estado
-JOIN creditos cr ON cr.id_cliente = cl.id_cliente AND cr.is_deleted = 0
-JOIN cuotas cu   ON cu.id_credito = cr.id_credito AND cu.is_deleted = 0
-WHERE cl.is_deleted = 0
+JOIN estado_cliente ec ON ec.id=cl.id_estado
+JOIN creditos cr ON cr.id_cliente = cl.id_cliente AND cr.borrado_logico = 0
+JOIN cuotas cu   ON cu.id_credito = cr.id_credito AND cu.borrado_logico = 0
+WHERE cl.borrado_logico = 0
   AND ec.codigo = 'Moroso'
 GROUP BY cl.id_cliente, cliente, ec.codigo
 ORDER BY deuda DESC;
@@ -249,9 +250,9 @@ SELECT
   COUNT(DISTINCT cr.id_credito) AS creditos,
   ROUND(100 * COUNT(DISTINCT cr.id_credito) / NULLIF(cp.clientes_captados,0), 2) AS ratio_pct
 FROM campanias_promocionales cp
-LEFT JOIN clientes cl ON cl.id_campania_ingreso = cp.id_campania AND cl.is_deleted = 0
-LEFT JOIN creditos cr ON cr.id_cliente = cl.id_cliente AND cr.is_deleted = 0
-WHERE cp.is_deleted = 0
+LEFT JOIN clientes cl ON cl.id_campania_ingreso = cp.id_campania AND cl.borrado_logico = 0
+LEFT JOIN creditos cr ON cr.id_cliente = cl.id_cliente AND cr.borrado_logico = 0
+WHERE cp.borrado_logico = 0
 GROUP BY cp.id_campania, cp.nombre, cp.clientes_captados
 ORDER BY ratio_pct DESC;
 
@@ -262,10 +263,10 @@ WITH vencido AS (
     ROUND(SUM(CASE WHEN cu.id_estado=@id_cuo_venc
               THEN (cu.monto_cuota - COALESCE(cu.monto_pagado,0)) ELSE 0 END),2) AS monto_vencido
   FROM sucursales s
-  JOIN solicitudes_credito sc ON sc.id_sucursal = s.id_sucursal AND sc.is_deleted = 0
-  JOIN creditos c             ON c.id_solicitud = sc.id_solicitud AND c.is_deleted = 0
-  JOIN cuotas cu              ON cu.id_credito  = c.id_credito   AND cu.is_deleted = 0
-  WHERE s.is_deleted = 0
+  JOIN solicitudes_credito sc ON sc.id_sucursal = s.id_sucursal AND sc.borrado_logico = 0
+  JOIN creditos c             ON c.id_solicitud = sc.id_solicitud AND c.borrado_logico = 0
+  JOIN cuotas cu              ON cu.id_credito  = c.id_credito   AND cu.borrado_logico = 0
+  WHERE s.borrado_logico = 0
   GROUP BY s.id_sucursal, s.nombre
 )
 SELECT *
@@ -286,7 +287,7 @@ WITH mov AS (
     h.tasa_nueva,
     LAG(h.tasa_nueva) OVER (PARTITION BY h.id_producto ORDER BY h.vigente_desde) AS tasa_prev
   FROM historico_tasas h
-  WHERE h.is_deleted = 0
+  WHERE h.borrado_logico = 0
     AND h.vigente_desde >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
 ),
 mov_calc AS (
@@ -321,7 +322,7 @@ SELECT
 FROM productos_financieros p
 LEFT JOIN mov_calc mc     ON mc.id_producto = p.id_producto
 LEFT JOIN ultimo_delta ud ON ud.id_producto = p.id_producto
-WHERE p.is_deleted = 0
+WHERE p.borrado_logico = 0
 ORDER BY cambios_12m DESC, p.id_producto;
 
 -- Q17. Ingresos estimados por intereses (mes actual)
@@ -329,7 +330,7 @@ SELECT
   DATE_FORMAT(CURDATE(), '%Y-%m') AS periodo,
   ROUND(SUM(cu.monto_interes), 2) AS intereses_mes
 FROM cuotas cu
-WHERE cu.is_deleted = 0
+WHERE cu.borrado_logico = 0
   AND YEAR(cu.fecha_vencimiento) = YEAR(CURDATE())
   AND MONTH(cu.fecha_vencimiento) = MONTH(CURDATE());
 
@@ -338,7 +339,7 @@ SELECT
   c.plazo_meses,
   COUNT(*) AS creditos
 FROM creditos c
-WHERE c.is_deleted = 0
+WHERE c.borrado_logico = 0
 GROUP BY c.plazo_meses
 ORDER BY c.plazo_meses;
 
@@ -347,8 +348,8 @@ SELECT
   cl.id_cliente, CONCAT(cl.nombre,' ',cl.apellido) AS cliente,
   COUNT(*) AS creditos_activos
 FROM clientes cl
-JOIN creditos c ON c.id_cliente = cl.id_cliente AND c.is_deleted=0
-WHERE cl.is_deleted = 0
+JOIN creditos c ON c.id_cliente = cl.id_cliente AND c.borrado_logico=0
+WHERE cl.borrado_logico = 0
   AND c.id_estado IN (@id_cre_act,@id_cre_mor)
 GROUP BY cl.id_cliente, cliente
 HAVING COUNT(*) > 1
@@ -360,9 +361,9 @@ WITH tot AS (
     s.id_sucursal, s.nombre,
     ROUND(SUM(c.monto_otorgado),2) AS total_otorgado
   FROM sucursales s
-  JOIN solicitudes_credito sc ON sc.id_sucursal = s.id_sucursal AND sc.is_deleted=0
-  JOIN creditos c ON c.id_solicitud = sc.id_solicitud AND c.is_deleted=0
-  WHERE s.is_deleted = 0
+  JOIN solicitudes_credito sc ON sc.id_sucursal = s.id_sucursal AND sc.borrado_logico=0
+  JOIN creditos c ON c.id_solicitud = sc.id_solicitud AND c.borrado_logico=0
+  WHERE s.borrado_logico = 0
   GROUP BY s.id_sucursal, s.nombre
 )
 SELECT t1.*
@@ -380,11 +381,10 @@ SELECT
   mp.codigo AS metodo_pago,
   COUNT(*) AS cant
 FROM pagos p
-JOIN dom_metodo_pago mp ON mp.id=p.id_metodo
-WHERE p.is_deleted = 0
+JOIN metodo_pago mp ON mp.id=p.id_metodo
+WHERE p.borrado_logico = 0
 GROUP BY mp.codigo
 ORDER BY cant DESC;
-
 
 
 /* =======================
@@ -413,7 +413,7 @@ SELECT
   ROUND(100*SUM(cc.resultado='Convirtio')/NULLIF(COUNT(DISTINCT cc.id_cliente),0),2) AS conv_rate_pct
 FROM campanias_promocionales cp
 LEFT JOIN campanias_clientes cc ON cc.id_campania=cp.id_campania
-WHERE cp.is_deleted=0
+WHERE cp.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre
 ORDER BY conversiones DESC;
 
@@ -430,9 +430,9 @@ SELECT
   ROUND( CASE WHEN (COUNT(DISTINCT cl.id_cliente))>0
         THEN cp.inversion_realizada/COUNT(DISTINCT cl.id_cliente) ELSE NULL END ,2) AS cpa_cli
 FROM campanias_promocionales cp
-LEFT JOIN clientes cl ON cl.id_campania_ingreso=cp.id_campania AND cl.is_deleted=0
-LEFT JOIN creditos cr ON cr.id_cliente=cl.id_cliente AND cr.is_deleted=0
-WHERE cp.is_deleted=0
+LEFT JOIN clientes cl ON cl.id_campania_ingreso=cp.id_campania AND cl.borrado_logico=0
+LEFT JOIN creditos cr ON cr.id_cliente=cl.id_cliente AND cr.borrado_logico=0
+WHERE cp.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre, cp.inversion_realizada
 ORDER BY roas DESC, ingreso_atr DESC;
 
@@ -456,7 +456,7 @@ SELECT
   ROUND(SUM(COALESCE(cr.monto_otorgado,0)),2)          AS monto_otorgado_last_touch
 FROM ult u
 JOIN campanias_promocionales cp ON cp.id_campania = u.id_campania_ult
-LEFT JOIN creditos cr ON cr.id_cliente = u.id_cliente AND cr.is_deleted=0
+LEFT JOIN creditos cr ON cr.id_cliente = u.id_cliente AND cr.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre
 ORDER BY monto_otorgado_last_touch DESC;
 
@@ -469,23 +469,7 @@ FROM campanias_clientes
 GROUP BY yymm, canal
 ORDER BY yymm DESC, conversiones DESC;
 
-/* -- Q27. Clientes con ≥2 contactos en los últimos 90 días y 0 conversiones  — Top 200 sin LIMIT
--- Objetivo:
---   Detectar prospectos para retargeting que fueron contactados varias veces en 90 días
---   pero nunca “convirtieron” (resultado='Convirtio' en campanias_clientes).
--- Criterios:
---   • Ventana temporal: últimos 90 días (tomando como referencia la última fecha registrada).
---   • Umbral: contactos_90d ≥ 2 y convs_90d = 0.
---   • Ranking: DENSE_RANK por (contactos_90d DESC, id_cliente ASC) para obtener Top 200 sin LIMIT.
--- Supuestos:
---   • campanias_clientes.is_deleted=0 filtra solo filas vigentes.
---   • resultado ∈ {'Convirtio','No'}; valores NULL se interpretan como no conversión.
--- Performance:
---   • Recomendados índices: (id_cliente, fecha_contacto), (resultado, fecha_contacto), (is_deleted).
--- Notas:
---   • Si “conversión” de negocio equivale a tener crédito, agregar NOT EXISTS contra creditos.
---   • Se puede enriquecer con MAX(fecha_contacto) y COUNT(DISTINCT canal) para priorización comercial.
- */
+-- Q27. Prospectos para retargeting (≥2 contactos 90d sin conversión) – Top 200
 WITH params AS (
   SELECT COALESCE(MAX(fecha_contacto), CURDATE()) base_ref FROM campanias_clientes
 ),
@@ -498,7 +482,7 @@ base AS (
     COUNT(DISTINCT c.canal)            AS canales_distintos
   FROM campanias_clientes c
   CROSS JOIN params p
-  WHERE c.is_deleted=0
+  WHERE c.borrado_logico=0
     AND c.fecha_contacto >= DATE_SUB(p.base_ref, INTERVAL 90 DAY)
   GROUP BY c.id_cliente
   HAVING convs_90d = 0 AND contactos_90d >= 2
@@ -515,7 +499,6 @@ FROM ranked
 WHERE rk <= 200
 ORDER BY contactos_90d DESC, ultima_interaccion DESC, id_cliente;
 
-
 -- Q28. Tasa de aprobación por analista
 SELECT
   e.id_empleado,
@@ -524,9 +507,9 @@ SELECT
   SUM(sc.id_estado=@id_sol_aprb) AS aprobadas,
   ROUND(100*SUM(sc.id_estado=@id_sol_aprb)/NULLIF(COUNT(*),0),2) AS tasa_aprob_pct
 FROM empleados e
-JOIN dom_cargo_empleado ce ON ce.id=e.id_cargo AND ce.codigo='Analista_Credito'
-LEFT JOIN solicitudes_credito sc ON sc.id_analista=e.id_empleado AND sc.is_deleted=0
-WHERE e.is_deleted=0
+JOIN cargo_empleado ce ON ce.id=e.id_cargo AND ce.codigo='Analista_Credito'
+LEFT JOIN solicitudes_credito sc ON sc.id_analista=e.id_empleado AND sc.borrado_logico=0
+WHERE e.borrado_logico=0
 GROUP BY e.id_empleado, analista
 HAVING total_eval>0
 ORDER BY tasa_aprob_pct DESC, aprobadas DESC;
@@ -538,7 +521,7 @@ SELECT
   SUM(sc.id_estado=@id_sol_aprb) AS aprobadas,
   ROUND(100*SUM(sc.id_estado=@id_sol_aprb)/NULLIF(COUNT(*),0),2) AS tasa_aprob_pct
 FROM solicitudes_credito sc
-WHERE sc.is_deleted=0
+WHERE sc.borrado_logico=0
 GROUP BY cohorte
 ORDER BY cohorte DESC;
 
@@ -549,11 +532,10 @@ SELECT
   cp.inversion_realizada,
   COUNT(DISTINCT cr.id_credito) AS creditos
 FROM campanias_promocionales cp
-LEFT JOIN clientes cl ON cl.id_campania_ingreso=cp.id_campania AND cl.is_deleted=0
-LEFT JOIN creditos cr ON cr.id_cliente=cl.id_cliente AND cr.is_deleted=0
+LEFT JOIN clientes cl ON cl.id_campania_ingreso=cp.id_campania AND cl.borrado_logico=0
+LEFT JOIN creditos cr ON cr.id_cliente=cl.id_cliente AND cr.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre, cp.inversion_realizada
 ORDER BY cp.inversion_realizada DESC;
-
 
 
 /* =======================
@@ -574,10 +556,10 @@ SELECT
   (cu.monto_cuota - COALESCE(cu.monto_pagado,0)) AS saldo,
   ecu.codigo AS estado_cuota
 FROM cuotas cu
-JOIN dom_estado_cuota ecu ON ecu.id=cu.id_estado
-JOIN creditos cr ON cr.id_credito = cu.id_credito AND cr.is_deleted=0
-JOIN clientes cl ON cl.id_cliente = cr.id_cliente AND cl.is_deleted=0
-WHERE cu.is_deleted = 0;
+JOIN estado_cuota ecu ON ecu.id=cu.id_estado
+JOIN creditos cr ON cr.id_credito = cu.id_credito AND cr.borrado_logico=0
+JOIN clientes cl ON cl.id_cliente = cr.id_cliente AND cl.borrado_logico=0
+WHERE cu.borrado_logico = 0;
 
 -- V2. Bandeja de solicitudes para analista
 DROP VIEW IF EXISTS vw_solicitudes_analista;
@@ -596,10 +578,10 @@ SELECT
   sc.fecha_solicitud,
   sc.fecha_evaluacion
 FROM solicitudes_credito sc
-JOIN clientes cl ON cl.id_cliente = sc.id_cliente AND cl.is_deleted=0
-JOIN productos_financieros pf ON pf.id_producto = sc.id_producto AND pf.is_deleted=0
-JOIN dom_estado_solicitud es ON es.id=sc.id_estado
-WHERE sc.is_deleted = 0;
+JOIN clientes cl ON cl.id_cliente = sc.id_cliente AND cl.borrado_logico=0
+JOIN productos_financieros pf ON pf.id_producto = sc.id_producto AND pf.borrado_logico=0
+JOIN estado_solicitud es ON es.id=sc.id_estado
+WHERE sc.borrado_logico = 0;
 
 -- V3. Avance por crédito
 DROP VIEW IF EXISTS vw_creditos_avance;
@@ -615,11 +597,11 @@ SELECT
   COUNT(*) AS cuotas_totales,
   ROUND(100 * SUM(CASE WHEN COALESCE(cu.monto_pagado,0) >= cu.monto_cuota THEN 1 ELSE 0 END) / COUNT(*), 2) AS avance_pct
 FROM creditos c
-JOIN dom_estado_credito  ec  ON ec.id = c.id_estado
-JOIN clientes            cl  ON cl.id_cliente = c.id_cliente  AND cl.is_deleted = 0
-JOIN productos_financieros pf ON pf.id_producto = c.id_producto AND pf.is_deleted = 0
-JOIN cuotas              cu  ON cu.id_credito = c.id_credito  AND cu.is_deleted = 0
-WHERE c.is_deleted = 0
+JOIN estado_credito  ec  ON ec.id = c.id_estado
+JOIN clientes            cl  ON cl.id_cliente = c.id_cliente  AND cl.borrado_logico = 0
+JOIN productos_financieros pf ON pf.id_producto = c.id_producto AND pf.borrado_logico = 0
+JOIN cuotas              cu  ON cu.id_credito = c.id_credito  AND cu.borrado_logico = 0
+WHERE c.borrado_logico = 0
 GROUP BY c.id_credito, c.id_cliente, cliente, c.id_producto, producto, ec.codigo;
 
 -- V4. KPIs de campañas (funnel, ROAS, CPA)
@@ -653,11 +635,11 @@ LEFT JOIN (
          COUNT(DISTINCT cr.id_credito) AS creditos,
          SUM(COALESCE(cr.monto_otorgado,0)) AS monto_otorgado
   FROM clientes cl
-  LEFT JOIN creditos cr ON cr.id_cliente=cl.id_cliente AND cr.is_deleted=0
-  WHERE cl.id_campania_ingreso IS NOT NULL AND cl.is_deleted=0
+  LEFT JOIN creditos cr ON cr.id_cliente=cl.id_cliente AND cr.borrado_logico=0
+  WHERE cl.id_campania_ingreso IS NOT NULL AND cl.borrado_logico=0
   GROUP BY cl.id_campania_ingreso
 ) ast ON ast.id_campania=cp.id_campania
-WHERE cp.is_deleted=0;
+WHERE cp.borrado_logico=0;
 
 -- V5. Atribución Last Touch
 DROP VIEW IF EXISTS vw_atribucion_ultimo_toque;
@@ -681,27 +663,24 @@ SELECT
   ROUND(SUM(COALESCE(cr.monto_otorgado,0)),2) AS monto_otorgado
 FROM ult u
 JOIN campanias_promocionales cp ON cp.id_campania=u.id_campania
-LEFT JOIN creditos cr ON cr.id_cliente=u.id_cliente AND cr.is_deleted=0
+LEFT JOIN creditos cr ON cr.id_cliente=u.id_cliente AND cr.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre, u.id_cliente;
 
 
-
 /* =======================
-   (Opcional) PERMISOS
+   PERMISOS
    ======================= */
--- GRANT SELECT ON gestion_creditos.vw_cartera_cobranza        TO 'gestor_cobranza'@'localhost';
--- GRANT SELECT ON gestion_creditos.vw_solicitudes_analista     TO 'analista_credito'@'localhost';
--- GRANT SELECT ON gestion_creditos.vw_creditos_avance          TO 'admin_creditos'@'localhost';
--- GRANT SELECT ON gestion_creditos.vw_kpi_campanias            TO 'mkt'@'localhost';
--- GRANT SELECT ON gestion_creditos.vw_atribucion_ultimo_toque  TO 'mkt'@'localhost';
--- FLUSH PRIVILEGES;
-
+GRANT SELECT ON gestion_creditos.vw_cartera_cobranza        TO 'gestor_cobranza'@'localhost';
+GRANT SELECT ON gestion_creditos.vw_solicitudes_analista     TO 'analista_credito'@'localhost';
+GRANT SELECT ON gestion_creditos.vw_creditos_avance          TO 'admin_creditos'@'localhost';
+GRANT SELECT ON gestion_creditos.vw_kpi_campanias            TO 'mkt'@'localhost';
+GRANT SELECT ON gestion_creditos.vw_atribucion_ultimo_toque  TO 'mkt'@'localhost';
+FLUSH PRIVILEGES;
 
 
 /* =======================
    C) TRANSACCIONES (T1–T2)
    ======================= */
-
 
 -- T1. Refinanciación segura (envuelve reglas + genera nuevas cuotas)
 DROP PROCEDURE IF EXISTS sp_tx_refinanciar_si_mora;
@@ -724,7 +703,7 @@ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM creditos
         WHERE id_credito = p_id_credito
-          AND is_deleted = 0
+          AND borrado_logico = 0
           AND id_estado IN (@id_cre_act,@id_cre_mor)
     ) THEN
       ROLLBACK;
@@ -751,26 +730,39 @@ BEGIN
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
   BEGIN
     ROLLBACK;
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Error registrando contacto de campaña';
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT='Error registrando contacto de campaña';
   END;
 
   START TRANSACTION;
 
-    INSERT INTO campanias_clientes(id_campania, id_cliente, canal, resultado, fecha_contacto)
+    -- 1) Registrar contacto
+    INSERT INTO campanias_clientes(
+      id_campania, id_cliente, canal, resultado, fecha_contacto
+    )
     VALUES (p_id_campania, p_id_cliente, p_canal, p_resultado, p_fecha);
 
-    IF p_resultado='Convirtio' AND
-       (SELECT id_campania_ingreso FROM clientes WHERE id_cliente=p_id_cliente) IS NULL THEN
+    -- 2) Si convirtió y el cliente aún no tiene campaña de ingreso → setearla
+    IF p_resultado = 'Convirtio'
+       AND (SELECT id_campania_ingreso
+            FROM clientes
+            WHERE id_cliente = p_id_cliente
+              AND borrado_logico = 0) IS NULL THEN
+
       UPDATE clientes
       SET id_campania_ingreso = p_id_campania
-      WHERE id_cliente = p_id_cliente AND is_deleted=0;
+      WHERE id_cliente = p_id_cliente
+        AND borrado_logico = 0;
     END IF;
 
+    -- 3) Recalcular clientes_captados solo con clientes vivos (borrado_logico = 0)
     UPDATE campanias_promocionales cp
     LEFT JOIN (
-      SELECT id_campania_ingreso AS id_campania, COUNT(*) AS captados
+      SELECT id_campania_ingreso AS id_campania,
+             COUNT(*) AS captados
       FROM clientes
       WHERE id_campania_ingreso IS NOT NULL
+        AND borrado_logico = 0
       GROUP BY id_campania_ingreso
     ) x ON x.id_campania = cp.id_campania
     SET cp.clientes_captados = COALESCE(x.captados,0)
@@ -780,8 +772,168 @@ BEGIN
 END$$
 DELIMITER ;
 
--- Ejemplo: CALL sp_tx_registrar_contacto_campania(3, 120, 'WhatsApp', 'Convirtio', NOW());
 
 /* =======================
-   FIN DEL ARCHIVO
+   D) PRUEBAS / DEMO TRANSACCIONES (T1 y T2)
    ======================= */
+
+-- -------------------------------------------------
+-- D.1) PRUEBA T2 – sp_tx_registrar_contacto_campania
+-- -------------------------------------------------
+
+-- Tomamos un cliente sin campaña de ingreso
+SET @id_cliente_tx := (
+  SELECT id_cliente
+  FROM clientes
+  WHERE borrado_logico = 0
+    AND id_campania_ingreso IS NULL
+  ORDER BY id_cliente
+  LIMIT 1
+);
+
+-- Tomamos una campaña activa cualquiera
+SET @id_campania_tx := (
+  SELECT id_campania
+  FROM campanias_promocionales
+  WHERE borrado_logico = 0
+  ORDER BY id_campania
+  LIMIT 1
+);
+
+-- Ejecutamos la transacción: contacto + conversión
+CALL sp_tx_registrar_contacto_campania(
+  @id_campania_tx,
+  @id_cliente_tx,
+  'Web',          -- canal
+  'Convirtio',    -- resultado
+  NOW()           -- fecha_contacto
+);
+
+-- Verificación 1: se registró el contacto de campaña
+SELECT
+  id_campania,
+  id_cliente,
+  canal,
+  resultado,
+  fecha_contacto,
+  borrado_logico,
+  fecha_alta,
+  usuario_alta
+FROM campanias_clientes
+WHERE id_campania = @id_campania_tx
+  AND id_cliente  = @id_cliente_tx
+ORDER BY fecha_contacto DESC
+LIMIT 5;
+
+-- Verificación 2: el cliente quedó con id_campania_ingreso
+SELECT
+  id_cliente,
+  id_campania_ingreso
+FROM clientes
+WHERE id_cliente = @id_cliente_tx;
+
+-- Verificación 3: se actualizó clientes_captados de la campaña
+SELECT
+  id_campania,
+  nombre,
+  clientes_captados
+FROM campanias_promocionales
+WHERE id_campania = @id_campania_tx;
+
+
+-- -------------------------------------------------
+-- D.2) PRUEBA T1 – sp_tx_refinanciar_si_mora
+-- -------------------------------------------------
+
+/*
+   Buscamos un crédito candidato:
+   - NO borrado
+   - Estado Activo o En_Mora
+   - Con saldo pendiente > 0
+   - No es ya una refinanciación de otro (id_credito_refinanciado IS NULL)
+*/
+SET @id_credito_tx := (
+  SELECT c.id_credito
+  FROM creditos c
+  JOIN estado_credito ec ON ec.id = c.id_estado
+  JOIN cuotas cu         ON cu.id_credito = c.id_credito
+                         AND cu.borrado_logico = 0
+  WHERE c.borrado_logico = 0
+    AND c.id_credito_refinanciado IS NULL
+  GROUP BY c.id_credito, ec.codigo
+  HAVING ec.codigo IN ('Activo','En_Mora')
+     AND SUM(cu.monto_cuota - COALESCE(cu.monto_pagado,0)) > 0
+  ORDER BY SUM(cu.monto_cuota - COALESCE(cu.monto_pagado,0)) DESC,
+           c.id_credito
+  LIMIT 1
+);
+
+-- Verificación previa: estado + saldo pendiente del crédito elegido
+SELECT
+  c.id_credito,
+  ec.codigo AS estado_credito,
+  ROUND(SUM(cu.monto_cuota - COALESCE(cu.monto_pagado,0)),2) AS saldo_pendiente
+FROM creditos c
+JOIN estado_credito ec ON ec.id = c.id_estado
+JOIN cuotas cu         ON cu.id_credito = c.id_credito
+                       AND cu.borrado_logico = 0
+WHERE c.id_credito = @id_credito_tx
+GROUP BY c.id_credito, ec.codigo;
+
+-- Ejecutamos la transacción de refinanciación
+CALL sp_tx_refinanciar_si_mora(
+  @id_credito_tx,  -- crédito original
+  500000.00,       -- p_nuevo_monto (monto refinanciado)
+  24,              -- p_nuevo_plazo (meses)
+  55.000           -- p_nueva_tasa (anual)
+);
+
+USE gestion_creditos;
+
+-- Ver los valores que tienen las variables
+SELECT
+  @id_campania_tx   AS id_campania_tx,
+  @id_cliente_tx    AS id_cliente_tx;
+
+-- Ver si existen esas filas y no están borradas lógicamente
+SELECT *
+FROM campanias_promocionales
+WHERE id_campania = @id_campania_tx;
+
+SELECT *
+FROM clientes
+WHERE id_cliente = @id_cliente_tx;
+
+
+-- Verificación 1: crédito original vs nuevo crédito refinanciado
+SELECT
+  c.id_credito,
+  c.id_credito_refinanciado,
+  ec.codigo  AS estado_credito,
+  c.monto_otorgado,
+  c.plazo_meses,
+  c.borrado_logico
+FROM creditos c
+JOIN estado_credito ec ON ec.id = c.id_estado
+WHERE c.id_credito = @id_credito_tx
+   OR c.id_credito_refinanciado = @id_credito_tx
+ORDER BY c.id_credito;
+
+-- Verificación 2: cuotas del crédito original y del nuevo crédito
+SELECT
+  cu.id_credito,
+  COUNT(*)                                 AS cuotas_totales,
+  ROUND(SUM(cu.monto_cuota),2)            AS total_plan,
+  ROUND(SUM(COALESCE(cu.monto_pagado,0)),2) AS total_pagado
+FROM cuotas cu
+WHERE cu.borrado_logico = 0
+  AND (
+       cu.id_credito = @id_credito_tx
+       OR cu.id_credito IN (
+            SELECT id_credito
+            FROM creditos
+            WHERE id_credito_refinanciado = @id_credito_tx
+         )
+      )
+GROUP BY cu.id_credito
+ORDER BY cu.id_credito;
