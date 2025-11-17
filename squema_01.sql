@@ -5,7 +5,6 @@
 -- ✓ Catálogos (sin ENUM) + DOM
 -- ✓ Penalización AFTER INSERT en pagos (tasa diaria 0.0005)
 -- ✓ SPs/funciones con validaciones de negocio
--- ✓ Auditoría centralizada: auditoria_eventos + triggers (VARCHAR+CHECK)
 -- ✓ Guardia en pagos: variable de sesión @__allow_pago_insert
 -- ✓ Anti-solape en histórico de tasas
 -- ✓ Anti-aprobación sin garantes
@@ -25,186 +24,186 @@ SET sql_notes = 0;
 -- =========================
 -- 0) TABLAS DE DOMINIO
 -- =========================
-CREATE TABLE dom_estado_sucursal (
+CREATE TABLE estado_sucursal (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_cargo_empleado (
+CREATE TABLE cargo_empleado (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_estado_empleado (
+CREATE TABLE estado_empleado (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_estado_cliente (
+CREATE TABLE estado_cliente (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_situacion_laboral (
+CREATE TABLE situacion_laboral (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_tipo_producto (
+CREATE TABLE tipo_producto (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_estado_producto (
+CREATE TABLE estado_producto (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_estado_campania (
+CREATE TABLE estado_campania (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_estado_solicitud (
+CREATE TABLE estado_solicitud (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_estado_credito (
+CREATE TABLE estado_credito (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_estado_cuota (
+CREATE TABLE estado_cuota (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_metodo_pago (
+CREATE TABLE metodo_pago (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_estado_penalizacion (
+CREATE TABLE estado_penalizacion (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
-CREATE TABLE dom_comp_pago (
+CREATE TABLE comp_pago (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100)
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100)
 );
 
 -- =========================
@@ -213,31 +212,31 @@ CREATE TABLE dom_comp_pago (
 CREATE TABLE provincias (
   id_provincia INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   UNIQUE KEY uq_provincia_nombre (nombre),
-  INDEX idx_prov_isdel (is_deleted)
+  INDEX idx_prov_borrado (borrado_logico)
 );
 
 CREATE TABLE ciudades (
   id_ciudad INT AUTO_INCREMENT PRIMARY KEY,
   id_provincia INT NOT NULL,
   nombre VARCHAR(100) NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   CONSTRAINT uq_ciudad UNIQUE KEY (id_provincia, nombre),
   INDEX idx_ciudad_prov (id_provincia),
-  INDEX idx_ciudad_isdel (is_deleted),
+  INDEX idx_ciudad_borrado (borrado_logico),
   FOREIGN KEY (id_provincia) REFERENCES provincias(id_provincia)
 );
 
@@ -252,21 +251,21 @@ CREATE TABLE campanias_promocionales (
   fecha_inicio DATE NOT NULL,
   fecha_fin DATE NOT NULL,
   descuento_porcentaje DECIMAL(7,3),
-  id_estado INT NOT NULL, -- dom_estado_campania
+  id_estado INT NOT NULL, -- estado_campania
   presupuesto DECIMAL(14,2),
   inversion_realizada DECIMAL(14,2) DEFAULT 0,
   clientes_captados INT DEFAULT 0,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_camp_fechas (fecha_inicio, fecha_fin),
   INDEX idx_camp_estado (id_estado),
-  INDEX idx_camp_isdel (is_deleted),
-  FOREIGN KEY (id_estado) REFERENCES dom_estado_campania(id),
+  INDEX idx_camp_borrado (borrado_logico),
+  FOREIGN KEY (id_estado) REFERENCES estado_campania(id),
   CHECK (fecha_fin > fecha_inicio)
 );
 
@@ -280,21 +279,21 @@ CREATE TABLE sucursales (
   telefono VARCHAR(20),
   email VARCHAR(100),
   fecha_apertura DATE,
-  id_estado INT NOT NULL, -- dom_estado_sucursal
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  id_estado INT NOT NULL, -- estado_sucursal
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_sucursal_prov (id_provincia),
   INDEX idx_sucursal_ciud (id_ciudad),
   INDEX idx_sucursal_estado (id_estado),
-  INDEX idx_sucursal_isdel (is_deleted),
+  INDEX idx_sucursal_borrado (borrado_logico),
   FOREIGN KEY (id_provincia) REFERENCES provincias(id_provincia),
   FOREIGN KEY (id_ciudad)    REFERENCES ciudades(id_ciudad),
-  FOREIGN KEY (id_estado)    REFERENCES dom_estado_sucursal(id)
+  FOREIGN KEY (id_estado)    REFERENCES estado_sucursal(id)
 );
 
 CREATE TABLE empleados (
@@ -309,20 +308,20 @@ CREATE TABLE empleados (
   fecha_ingreso DATE,
   salario DECIMAL(10,2),
   id_estado INT NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_emp_sucursal (id_sucursal),
   INDEX idx_emp_cargo (id_cargo),
   INDEX idx_emp_estado (id_estado),
-  INDEX idx_emp_isdel (is_deleted),
+  INDEX idx_emp_borrado (borrado_logico),
   FOREIGN KEY (id_sucursal) REFERENCES sucursales(id_sucursal),
-  FOREIGN KEY (id_cargo)    REFERENCES dom_cargo_empleado(id),
-  FOREIGN KEY (id_estado)   REFERENCES dom_estado_empleado(id)
+  FOREIGN KEY (id_cargo)    REFERENCES cargo_empleado(id),
+  FOREIGN KEY (id_estado)   REFERENCES estado_empleado(id)
 );
 
 CREATE TABLE clientes (
@@ -335,32 +334,32 @@ CREATE TABLE clientes (
   telefono VARCHAR(20),
   direccion VARCHAR(200),
   ciudad VARCHAR(50),              -- compatibilidad
-  provincia VARCHAR(50),          -- compatibilidad
-  id_provincia INT NULL,          -- NUEVO FK escalable
-  id_ciudad INT NULL,             -- NUEVO FK escalable
+  provincia VARCHAR(50),           -- compatibilidad
+  id_provincia INT NULL,           -- NUEVO FK escalable
+  id_ciudad INT NULL,              -- NUEVO FK escalable
   ingresos_declarados DECIMAL(12,2) DEFAULT 0 CHECK (ingresos_declarados >= 0),
   id_situacion_laboral INT,
   id_campania_ingreso INT NULL,
   id_estado INT NOT NULL,
   provincia_norm VARCHAR(100) GENERATED ALWAYS AS (UPPER(TRIM(provincia))) VIRTUAL,
   ciudad_norm    VARCHAR(100) GENERATED ALWAYS AS (UPPER(TRIM(ciudad))) VIRTUAL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_cli_dni (dni),
   INDEX idx_cli_estado (id_estado),
   INDEX idx_cli_prov_norm (provincia_norm),
   INDEX idx_cli_ciud_norm (ciudad_norm),
   INDEX idx_cli_idprov (id_provincia),
   INDEX idx_cli_idciud (id_ciudad),
-  INDEX idx_cli_isdel (is_deleted),
-  FOREIGN KEY (id_situacion_laboral) REFERENCES dom_situacion_laboral(id),
+  INDEX idx_cli_borrado (borrado_logico),
+  FOREIGN KEY (id_situacion_laboral) REFERENCES situacion_laboral(id),
   FOREIGN KEY (id_campania_ingreso) REFERENCES campanias_promocionales(id_campania),
-  FOREIGN KEY (id_estado) REFERENCES dom_estado_cliente(id),
+  FOREIGN KEY (id_estado) REFERENCES estado_cliente(id),
   FOREIGN KEY (id_provincia) REFERENCES provincias(id_provincia),
   FOREIGN KEY (id_ciudad)    REFERENCES ciudades(id_ciudad)
 );
@@ -377,18 +376,18 @@ CREATE TABLE productos_financieros (
   plazo_maximo_meses INT NOT NULL,
   requisitos TEXT,
   id_estado INT NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_producto_tipo (id_tipo),
   INDEX idx_pf_estado (id_estado),
-  INDEX idx_pf_isdel (is_deleted),
-  FOREIGN KEY (id_tipo)   REFERENCES dom_tipo_producto(id),
-  FOREIGN KEY (id_estado) REFERENCES dom_estado_producto(id),
+  INDEX idx_pf_borrado (borrado_logico),
+  FOREIGN KEY (id_tipo)   REFERENCES tipo_producto(id),
+  FOREIGN KEY (id_estado) REFERENCES estado_producto(id),
   CHECK (monto_maximo >= monto_minimo),
   CHECK (plazo_maximo_meses >= plazo_minimo_meses)
 );
@@ -403,17 +402,17 @@ CREATE TABLE historico_tasas (
   usuario_responsable VARCHAR(100),
   vigente_desde DATE NULL,
   vigente_hasta DATE NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   FOREIGN KEY (id_producto) REFERENCES productos_financieros(id_producto),
   INDEX idx_hist_producto_fecha (id_producto, fecha_cambio),
   INDEX idx_hist_vigencia (id_producto, vigente_desde, vigente_hasta),
-  INDEX idx_ht_isdel (is_deleted),
+  INDEX idx_ht_borrado (borrado_logico),
   UNIQUE KEY uq_hist_producto_fecha (id_producto, fecha_cambio)
 );
 
@@ -427,15 +426,15 @@ CREATE TABLE garantes (
   direccion VARCHAR(200),
   ingresos_declarados DECIMAL(12,2) DEFAULT 0,
   relacion_cliente VARCHAR(50),
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_garante_dni (dni),
-  INDEX idx_garante_isdel (is_deleted)
+  INDEX idx_garante_borrado (borrado_logico)
 );
 
 CREATE TABLE solicitudes_credito (
@@ -453,40 +452,40 @@ CREATE TABLE solicitudes_credito (
   id_analista INT,
   observaciones TEXT,
   fecha_evaluacion TIMESTAMP NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_sol_cliente (id_cliente),
   INDEX idx_sol_estado (id_estado),
   INDEX idx_sol_fecha (fecha_solicitud),
-  INDEX idx_sol_isdel (is_deleted),
+  INDEX idx_sol_borrado (borrado_logico),
   FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente),
   FOREIGN KEY (id_sucursal) REFERENCES sucursales(id_sucursal),
   FOREIGN KEY (id_empleado_gestor) REFERENCES empleados(id_empleado),
   FOREIGN KEY (id_producto) REFERENCES productos_financieros(id_producto),
   FOREIGN KEY (id_analista) REFERENCES empleados(id_empleado),
-  FOREIGN KEY (id_estado) REFERENCES dom_estado_solicitud(id)
+  FOREIGN KEY (id_estado) REFERENCES estado_solicitud(id)
 );
 
 CREATE TABLE solicitudes_garantes (
   id_solicitud INT NOT NULL,
   id_garante INT NOT NULL,
   fecha_vinculacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   PRIMARY KEY (id_solicitud, id_garante),
   FOREIGN KEY (id_solicitud) REFERENCES solicitudes_credito(id_solicitud) ON DELETE CASCADE,
   FOREIGN KEY (id_garante) REFERENCES garantes(id_garante),
-  INDEX idx_sg_sol_isdel (id_solicitud, is_deleted)
+  INDEX idx_sg_sol_borrado (id_solicitud, borrado_logico)
 );
 
 CREATE TABLE creditos (
@@ -501,20 +500,20 @@ CREATE TABLE creditos (
   fecha_finalizacion DATE NOT NULL,
   id_estado INT NOT NULL,
   id_credito_refinanciado INT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_creditos_solicitud (id_solicitud),
   INDEX idx_cre_fecha_inicio (fecha_inicio),
-  INDEX idx_cre_isdel (is_deleted),
+  INDEX idx_cre_borrado (borrado_logico),
   FOREIGN KEY (id_solicitud) REFERENCES solicitudes_credito(id_solicitud),
   FOREIGN KEY (id_cliente)  REFERENCES clientes(id_cliente),
   FOREIGN KEY (id_producto) REFERENCES productos_financieros(id_producto),
-  FOREIGN KEY (id_estado)   REFERENCES dom_estado_credito(id),
+  FOREIGN KEY (id_estado)   REFERENCES estado_credito(id),
   FOREIGN KEY (id_credito_refinanciado) REFERENCES creditos(id_credito)
 );
 
@@ -529,20 +528,20 @@ CREATE TABLE cuotas (
   saldo_pendiente DECIMAL(14,2) NOT NULL DEFAULT 0,
   monto_pagado DECIMAL(14,2) NOT NULL DEFAULT 0,
   id_estado INT NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   UNIQUE KEY uq_cuota (id_credito, numero_cuota),
   INDEX idx_cuota_credito_estado (id_credito, id_estado),
   INDEX idx_cuota_venc (fecha_vencimiento),
-  INDEX idx_cuota_isdel (is_deleted),
-  INDEX idx_cuota_credito_isdel (id_credito, is_deleted),
+  INDEX idx_cuota_borrado (borrado_logico),
+  INDEX idx_cuota_credito_borrado (id_credito, borrado_logico),
   FOREIGN KEY (id_credito) REFERENCES creditos(id_credito),
-  FOREIGN KEY (id_estado)  REFERENCES dom_estado_cuota(id)
+  FOREIGN KEY (id_estado)  REFERENCES estado_cuota(id)
 );
 
 CREATE TABLE pagos (
@@ -554,20 +553,20 @@ CREATE TABLE pagos (
   dias_demora INT DEFAULT 0,
   numero_comprobante VARCHAR(50),
   observaciones TEXT,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_pago_cuota_fecha (id_cuota, fecha_pago),
   INDEX idx_pago_fecha_metodo (fecha_pago, id_metodo),
-  INDEX idx_pago_isdel (is_deleted),
-  INDEX idx_pago_cuota_isdel (id_cuota, is_deleted),
+  INDEX idx_pago_borrado (borrado_logico),
+  INDEX idx_pago_cuota_borrado (id_cuota, borrado_logico),
   UNIQUE KEY uq_pagos_comprobante (numero_comprobante),
   FOREIGN KEY (id_cuota) REFERENCES cuotas(id_cuota),
-  FOREIGN KEY (id_metodo) REFERENCES dom_metodo_pago(id)
+  FOREIGN KEY (id_metodo) REFERENCES metodo_pago(id)
 );
 
 CREATE TABLE penalizaciones (
@@ -578,18 +577,18 @@ CREATE TABLE penalizaciones (
   tasa_mora DECIMAL(7,5) NOT NULL,
   fecha_aplicacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   id_estado INT NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_pen_cuota (id_cuota),
   INDEX idx_pen_estado (id_estado),
-  INDEX idx_pen_isdel (is_deleted),
+  INDEX idx_pen_borrado (borrado_logico),
   FOREIGN KEY (id_cuota) REFERENCES cuotas(id_cuota),
-  FOREIGN KEY (id_estado) REFERENCES dom_estado_penalizacion(id)
+  FOREIGN KEY (id_estado) REFERENCES estado_penalizacion(id)
 );
 
 CREATE TABLE evaluaciones_seguimiento (
@@ -603,36 +602,36 @@ CREATE TABLE evaluaciones_seguimiento (
   puntaje_actualizado INT,
   observaciones TEXT,
   recomendaciones TEXT,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   INDEX idx_ev_cli (id_cliente),
   INDEX idx_ev_fecha (fecha_evaluacion),
-  INDEX idx_ev_isdel (is_deleted),
+  INDEX idx_ev_borrado (borrado_logico),
   FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente),
   FOREIGN KEY (id_credito) REFERENCES creditos(id_credito),
   FOREIGN KEY (id_analista) REFERENCES empleados(id_empleado),
-  FOREIGN KEY (id_comp_pago) REFERENCES dom_comp_pago(id)
+  FOREIGN KEY (id_comp_pago) REFERENCES comp_pago(id)
 );
 
 CREATE TABLE campanias_productos (
   id_campania INT NOT NULL,
   id_producto INT NOT NULL,
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   PRIMARY KEY (id_campania, id_producto),
   FOREIGN KEY (id_campania) REFERENCES campanias_promocionales(id_campania) ON DELETE CASCADE,
   FOREIGN KEY (id_producto) REFERENCES productos_financieros(id_producto),
-  INDEX idx_cp_isdel (is_deleted)
+  INDEX idx_cp_borrado (borrado_logico)
 );
 
 CREATE TABLE campanias_clientes (
@@ -641,51 +640,20 @@ CREATE TABLE campanias_clientes (
   canal VARCHAR(50),
   resultado VARCHAR(15),
   fecha_contacto DATE NOT NULL DEFAULT (CURRENT_DATE),
-  is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by VARCHAR(100),
-  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  updated_by VARCHAR(100),
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
-  deleted_by VARCHAR(100),
+  borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
+  fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  usuario_alta VARCHAR(100),
+  fecha_modificacion TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  usuario_modificacion VARCHAR(100),
+  fecha_baja TIMESTAMP NULL DEFAULT NULL,
+  usuario_baja VARCHAR(100),
   PRIMARY KEY (id_campania, id_cliente, fecha_contacto),
   FOREIGN KEY (id_campania) REFERENCES campanias_promocionales(id_campania) ON DELETE CASCADE,
   FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente),
   INDEX idx_cc_camp_cli (id_campania, id_cliente),
   INDEX idx_cc_fecha (fecha_contacto),
-  INDEX idx_cc_isdel (is_deleted),
+  INDEX idx_cc_borrado (borrado_logico),
   CHECK (resultado IN ('Convirtio','No') OR resultado IS NULL)
-);
-
--- Auditoría auxiliar (histórico de tasas)
-CREATE TABLE auditoria_tasas (
-  id_aud BIGINT AUTO_INCREMENT PRIMARY KEY,
-  id_historico INT,
-  id_producto INT,
-  tasa DECIMAL(7,3),
-  vigente_desde DATE,
-  vigente_hasta DATE,
-  operacion VARCHAR(10) NOT NULL,
-  audit_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  CHECK (operacion IN ('INSERT','UPDATE'))
-);
-
--- =====================================================
--- 2.b) AUDITORÍA CENTRALIZADA (tabla)
--- =====================================================
-CREATE TABLE auditoria_eventos (
-  id_audit      BIGINT AUTO_INCREMENT PRIMARY KEY,
-  tabla         VARCHAR(64) NOT NULL,
-  pk_nombre     VARCHAR(64) NOT NULL,
-  pk_valor      VARCHAR(64) NOT NULL,
-  operacion     VARCHAR(10) NOT NULL,
-  usuario       VARCHAR(100) NULL,
-  evento_ts     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  datos_antes   JSON NULL,
-  datos_despues JSON NULL,
-  CHECK (operacion IN ('INSERT','UPDATE','DELETE')),
-  INDEX idx_aud_tabla_ts (tabla, evento_ts),
-  INDEX idx_aud_pk (tabla, pk_nombre, pk_valor, evento_ts)
 );
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -729,7 +697,7 @@ BEGIN
   DECLARE v_tasa DECIMAL(7,3);
   SELECT h.tasa_nueva INTO v_tasa
   FROM historico_tasas h
-  WHERE h.is_deleted = 0
+  WHERE h.borrado_logico = 0
     AND h.id_producto = p_id_producto
     AND (
       (h.vigente_desde IS NOT NULL AND h.vigente_hasta IS NOT NULL AND p_fecha BETWEEN h.vigente_desde AND h.vigente_hasta)
@@ -741,7 +709,7 @@ BEGIN
   IF v_tasa IS NULL THEN
     SELECT h.tasa_nueva INTO v_tasa
     FROM historico_tasas h
-    WHERE h.is_deleted = 0
+    WHERE h.borrado_logico = 0
       AND h.id_producto = p_id_producto AND DATE(h.fecha_cambio) <= p_fecha
     ORDER BY h.fecha_cambio DESC LIMIT 1;
   END IF;
@@ -768,7 +736,7 @@ BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Error generando cuotas';
   END;
 
-  SELECT id INTO v_id_estado_pend FROM dom_estado_cuota WHERE codigo='Pendiente';
+  SELECT id INTO v_id_estado_pend FROM estado_cuota WHERE codigo='Pendiente';
 
   START TRANSACTION;
     SELECT monto_otorgado, tasa_interes, plazo_meses, fecha_inicio
@@ -816,22 +784,22 @@ BEGIN
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
   BEGIN ROLLBACK; SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Error al aprobar solicitud'; END;
 
-  SELECT id INTO v_id_aprob FROM dom_estado_solicitud WHERE codigo='Aprobada';
-  SELECT id INTO v_id_enrev FROM dom_estado_solicitud WHERE codigo='En_Revision';
-  SELECT id INTO v_id_pend  FROM dom_estado_solicitud WHERE codigo='Pendiente';
-  SELECT id INTO v_id_credito_activo FROM dom_estado_credito WHERE codigo='Activo';
+  SELECT id INTO v_id_aprob FROM estado_solicitud WHERE codigo='Aprobada';
+  SELECT id INTO v_id_enrev FROM estado_solicitud WHERE codigo='En_Revision';
+  SELECT id INTO v_id_pend  FROM estado_solicitud WHERE codigo='Pendiente';
+  SELECT id INTO v_id_credito_activo FROM estado_credito WHERE codigo='Activo';
 
   START TRANSACTION;
     IF NOT EXISTS (
       SELECT 1 FROM solicitudes_credito
-      WHERE id_solicitud=p_id_solicitud AND is_deleted=0 AND id_estado IN (v_id_pend, v_id_enrev)
+      WHERE id_solicitud=p_id_solicitud AND borrado_logico=0 AND id_estado IN (v_id_pend, v_id_enrev)
     ) THEN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Solicitud no válida o ya procesada';
     END IF;
 
     SELECT COUNT(*) INTO v_cnt_gar
     FROM solicitudes_garantes
-    WHERE id_solicitud=p_id_solicitud AND is_deleted=0;
+    WHERE id_solicitud=p_id_solicitud AND borrado_logico=0;
     IF v_cnt_gar < 1 THEN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La solicitud no posee garantes vinculados';
     END IF;
@@ -842,7 +810,7 @@ BEGIN
 
     SELECT monto_minimo, monto_maximo, plazo_minimo_meses, plazo_maximo_meses
       INTO v_min, v_max, v_pmin, v_pmax
-    FROM productos_financieros WHERE id_producto=v_id_producto AND is_deleted=0 FOR UPDATE;
+    FROM productos_financieros WHERE id_producto=v_id_producto AND borrado_logico=0 FOR UPDATE;
 
     IF p_monto_aprobado < v_min OR p_monto_aprobado > v_max THEN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Monto fuera de los límites del producto';
@@ -853,8 +821,8 @@ BEGIN
 
     SELECT COUNT(*) INTO v_es_analista
     FROM empleados e
-    JOIN dom_cargo_empleado c ON c.id=e.id_cargo AND c.codigo='Analista_Credito'
-    WHERE e.id_empleado=p_id_analista AND e.is_deleted=0;
+    JOIN cargo_empleado c ON c.id=e.id_cargo AND c.codigo='Analista_Credito'
+    WHERE e.id_empleado=p_id_analista AND e.borrado_logico=0;
     IF v_es_analista = 0 THEN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El evaluador no tiene cargo Analista_Credito';
     END IF;
@@ -912,15 +880,15 @@ BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Error al registrar pago';
   END;
 
-  SELECT id INTO v_id_pagada   FROM dom_estado_cuota WHERE codigo='Pagada';
-  SELECT id INTO v_id_pag_mora FROM dom_estado_cuota WHERE codigo='Pagada_Con_Mora';
-  SELECT id INTO v_id_vencida  FROM dom_estado_cuota WHERE codigo='Vencida';
-  SELECT id INTO v_id_pend     FROM dom_estado_cuota WHERE codigo='Pendiente';
+  SELECT id INTO v_id_pagada   FROM estado_cuota WHERE codigo='Pagada';
+  SELECT id INTO v_id_pag_mora FROM estado_cuota WHERE codigo='Pagada_Con_Mora';
+  SELECT id INTO v_id_vencida  FROM estado_cuota WHERE codigo='Vencida';
+  SELECT id INTO v_id_pend     FROM estado_cuota WHERE codigo='Pendiente';
 
   START TRANSACTION;
     SELECT fecha_vencimiento, monto_cuota, monto_pagado
       INTO v_venc, v_monto_cuota, v_monto_pagado
-    FROM cuotas WHERE id_cuota=p_id_cuota AND is_deleted=0 FOR UPDATE;
+    FROM cuotas WHERE id_cuota=p_id_cuota AND borrado_logico=0 FOR UPDATE;
 
     SET v_saldo_restante = ROUND(v_monto_cuota - v_monto_pagado, 2);
     IF p_monto > v_saldo_restante THEN
@@ -957,12 +925,12 @@ BEGIN
              SUM(id_estado IN (v_id_pagada, v_id_pag_mora)) pagadas,
              SUM(id_estado = v_id_vencida) vencidas,
              COUNT(*) total
-      FROM cuotas WHERE id_credito = (SELECT id_credito FROM cuotas WHERE id_cuota=p_id_cuota) AND is_deleted=0
+      FROM cuotas WHERE id_credito = (SELECT id_credito FROM cuotas WHERE id_cuota=p_id_cuota) AND borrado_logico=0
       GROUP BY id_credito
     ) x ON x.id_credito = c.id_credito
-    JOIN dom_estado_credito ec_act ON ec_act.codigo='Activo'
-    JOIN dom_estado_credito ec_mor ON ec_mor.codigo='En_Mora'
-    JOIN dom_estado_credito ec_pag ON ec_pag.codigo='Pagado'
+    JOIN estado_credito ec_act ON ec_act.codigo='Activo'
+    JOIN estado_credito ec_mor ON ec_mor.codigo='En_Mora'
+    JOIN estado_credito ec_pag ON ec_pag.codigo='Pagado'
     SET c.id_estado = CASE
                         WHEN x.pagadas = x.total THEN ec_pag.id
                         WHEN x.vencidas > 0 THEN ec_mor.id
@@ -984,9 +952,9 @@ BEGIN
 
   SET v_decision = UPPER(REPLACE(p_decision,' ',''));
 
-  SELECT id INTO v_id_aprob FROM dom_estado_solicitud WHERE codigo='Aprobada';
-  SELECT id INTO v_id_rech  FROM dom_estado_solicitud WHERE codigo='Rechazada';
-  SELECT id INTO v_id_enrev FROM dom_estado_solicitud WHERE codigo='En_Revision';
+  SELECT id INTO v_id_aprob FROM estado_solicitud WHERE codigo='Aprobada';
+  SELECT id INTO v_id_rech  FROM estado_solicitud WHERE codigo='Rechazada';
+  SELECT id INTO v_id_enrev FROM estado_solicitud WHERE codigo='En_Revision';
 
   IF v_decision NOT IN ('APROBADA','RECHAZADA','EN_REVISION') THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Decisión inválida (Aprobada|Rechazada|En_Revision)';
@@ -1002,7 +970,7 @@ BEGIN
         id_analista = p_id_analista,
         fecha_evaluacion = NOW(),
         observaciones = p_obs
-  WHERE id_solicitud = p_id_solicitud AND is_deleted=0;
+  WHERE id_solicitud = p_id_solicitud AND borrado_logico=0;
 END$$
 
 CREATE PROCEDURE sp_refinanciar_credito(
@@ -1019,12 +987,12 @@ BEGIN
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
   BEGIN ROLLBACK; SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Error en refinanciación'; END;
 
-  SELECT id INTO v_id_act FROM dom_estado_credito WHERE codigo='Activo';
-  SELECT id INTO v_id_ref FROM dom_estado_credito WHERE codigo='Refinanciado';
+  SELECT id INTO v_id_act FROM estado_credito WHERE codigo='Activo';
+  SELECT id INTO v_id_ref FROM estado_credito WHERE codigo='Refinanciado';
 
   START TRANSACTION;
     IF NOT EXISTS (
-      SELECT 1 FROM creditos WHERE id_credito=p_id_credito_original AND is_deleted=0 AND id_estado IN (v_id_act)
+      SELECT 1 FROM creditos WHERE id_credito=p_id_credito_original AND borrado_logico=0 AND id_estado IN (v_id_act)
     ) THEN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Crédito no válido para refinanciación';
     END IF;
@@ -1055,7 +1023,7 @@ END$$
 DELIMITER ;
 
 -- =========================
--- 5) TRIGGERS (auditoría + blindaje)
+-- 5) TRIGGERS (auditoría + blindaje, sin auditoria_tasas / auditoria_eventos)
 -- =========================
 DELIMITER $$
 
@@ -1092,15 +1060,6 @@ DROP TRIGGER IF EXISTS trg_generico_bi_pen $$
 DROP TRIGGER IF EXISTS trg_generico_bu_pen $$
 DROP TRIGGER IF EXISTS trg_generico_bi_eval $$
 DROP TRIGGER IF EXISTS trg_generico_bu_eval $$
-DROP TRIGGER IF EXISTS aud_clientes_ins $$
-DROP TRIGGER IF EXISTS aud_clientes_upd $$
-DROP TRIGGER IF EXISTS aud_clientes_del $$
-DROP TRIGGER IF EXISTS aud_pagos_ins $$
-DROP TRIGGER IF EXISTS aud_pagos_upd $$
-DROP TRIGGER IF EXISTS aud_pagos_del $$
-DROP TRIGGER IF EXISTS aud_creditos_ins $$
-DROP TRIGGER IF EXISTS aud_creditos_upd $$
-DROP TRIGGER IF EXISTS aud_creditos_del $$
 DROP TRIGGER IF EXISTS trg_sol_no_aprobar_sin_garante $$
 DROP TRIGGER IF EXISTS trg_hist_no_solape $$
 
@@ -1110,7 +1069,7 @@ FOR EACH ROW
 BEGIN
   SET NEW.provincia = TRIM(REPLACE(REPLACE(NEW.provincia,'  ',' '),'  ',' '));
   SET NEW.ciudad    = TRIM(REPLACE(REPLACE(NEW.ciudad,'  ',' '),'  ',' '));
-  IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF;
+  IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF;
 END$$
 
 CREATE TRIGGER trg_clientes_bu BEFORE UPDATE ON clientes
@@ -1118,10 +1077,10 @@ FOR EACH ROW
 BEGIN
   SET NEW.provincia = TRIM(REPLACE(REPLACE(NEW.provincia,'  ',' '),'  ',' '));
   SET NEW.ciudad    = TRIM(REPLACE(REPLACE(NEW.ciudad,'  ',' '),'  ',' '));
-  SET NEW.updated_by = CURRENT_USER();
-  IF NEW.is_deleted = 1 AND OLD.is_deleted = 0 THEN
-    SET NEW.deleted_at = CURRENT_TIMESTAMP;
-    IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by = CURRENT_USER(); END IF;
+  SET NEW.usuario_modificacion = CURRENT_USER();
+  IF NEW.borrado_logico = 1 AND OLD.borrado_logico = 0 THEN
+    SET NEW.fecha_baja = CURRENT_TIMESTAMP;
+    IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja = CURRENT_USER(); END IF;
   END IF;
 END$$
 
@@ -1140,8 +1099,8 @@ BEGIN
   FROM cuotas WHERE id_cuota = NEW.id_cuota;
 
   SET NEW.dias_demora = GREATEST(0, DATEDIFF(DATE(COALESCE(NEW.fecha_pago, NOW())), v_venc));
-  IF NEW.created_by IS NULL THEN
-    SET NEW.created_by = CURRENT_USER();
+  IF NEW.usuario_alta IS NULL THEN
+    SET NEW.usuario_alta = CURRENT_USER();
   END IF;
 END$$
 
@@ -1150,11 +1109,11 @@ AFTER INSERT ON pagos
 FOR EACH ROW
 BEGIN
   DECLARE v_venc DATE; DECLARE v_monto DECIMAL(14,2); DECLARE v_dias INT; DECLARE v_pen_pend INT;
-  IF NEW.is_deleted = 0 THEN
+  IF NEW.borrado_logico = 0 THEN
     SELECT fecha_vencimiento, monto_cuota INTO v_venc, v_monto
-    FROM cuotas WHERE id_cuota = NEW.id_cuota AND is_deleted=0;
+    FROM cuotas WHERE id_cuota = NEW.id_cuota AND borrado_logico=0;
     SET v_dias = GREATEST(0, DATEDIFF(DATE(NEW.fecha_pago), v_venc));
-    SELECT id INTO v_pen_pend FROM dom_estado_penalizacion WHERE codigo='Pendiente';
+    SELECT id INTO v_pen_pend FROM estado_penalizacion WHERE codigo='Pendiente';
     IF v_dias > 0 THEN
       INSERT INTO penalizaciones(id_cuota, dias_mora, monto_penalizacion, tasa_mora, id_estado)
       VALUES (NEW.id_cuota, v_dias, fn_calcular_mora(v_monto, v_dias, 0.0005), 0.0005, v_pen_pend);
@@ -1169,13 +1128,13 @@ BEGIN
   DECLARE v_id_pagada INT; DECLARE v_id_pag_mora INT; DECLARE v_id_vencida INT;
   DECLARE v_id_cre_act INT; DECLARE v_id_cre_mor INT; DECLARE v_id_cre_pag INT;
 
-  SELECT id INTO v_id_pagada   FROM dom_estado_cuota WHERE codigo='Pagada';
-  SELECT id INTO v_id_pag_mora FROM dom_estado_cuota WHERE codigo='Pagada_Con_Mora';
-  SELECT id INTO v_id_vencida  FROM dom_estado_cuota WHERE codigo='Vencida';
+  SELECT id INTO v_id_pagada   FROM estado_cuota WHERE codigo='Pagada';
+  SELECT id INTO v_id_pag_mora FROM estado_cuota WHERE codigo='Pagada_Con_Mora';
+  SELECT id INTO v_id_vencida  FROM estado_cuota WHERE codigo='Vencida';
 
-  SELECT id INTO v_id_cre_act FROM dom_estado_credito WHERE codigo='Activo';
-  SELECT id INTO v_id_cre_mor FROM dom_estado_credito WHERE codigo='En_Mora';
-  SELECT id INTO v_id_cre_pag FROM dom_estado_credito WHERE codigo='Pagado';
+  SELECT id INTO v_id_cre_act FROM estado_credito WHERE codigo='Activo';
+  SELECT id INTO v_id_cre_mor FROM estado_credito WHERE codigo='En_Mora';
+  SELECT id INTO v_id_cre_pag FROM estado_credito WHERE codigo='Pagado';
 
   SET v_id_credito = NEW.id_credito;
 
@@ -1185,7 +1144,7 @@ BEGIN
            SUM(id_estado IN (v_id_pagada, v_id_pag_mora)) pagadas,
            SUM(id_estado = v_id_vencida) vencidas,
            COUNT(*) total
-    FROM cuotas WHERE id_credito=v_id_credito AND is_deleted=0
+    FROM cuotas WHERE id_credito=v_id_credito AND borrado_logico=0
     GROUP BY id_credito
   ) x ON x.id_credito = c.id_credito
   SET c.id_estado = CASE
@@ -1204,82 +1163,84 @@ BEGIN
   DECLARE v_id_pag_mora INT;
   DECLARE v_id_pen_pag  INT;
 
-  SELECT id INTO v_id_pagada   FROM dom_estado_cuota        WHERE codigo='Pagada';
-  SELECT id INTO v_id_pag_mora FROM dom_estado_cuota        WHERE codigo='Pagada_Con_Mora';
-  SELECT id INTO v_id_pen_pag  FROM dom_estado_penalizacion WHERE codigo='Pagada';
+  SELECT id INTO v_id_pagada   FROM estado_cuota        WHERE codigo='Pagada';
+  SELECT id INTO v_id_pag_mora FROM estado_cuota        WHERE codigo='Pagada_Con_Mora';
+  SELECT id INTO v_id_pen_pag  FROM estado_penalizacion WHERE codigo='Pagada';
 
   IF NEW.id_estado IN (v_id_pagada, v_id_pag_mora) THEN
     UPDATE penalizaciones
-    SET id_estado = v_id_pen_pag, updated_at = NOW(), updated_by = CURRENT_USER()
-    WHERE id_cuota = NEW.id_cuota AND is_deleted = 0;
+    SET id_estado = v_id_pen_pag,
+        fecha_modificacion = NOW(),
+        usuario_modificacion = CURRENT_USER()
+    WHERE id_cuota = NEW.id_cuota AND borrado_logico = 0;
   END IF;
 END$$
 
 -- Triggers genéricos metadatos (incluye provincias/ciudades)
 CREATE TRIGGER trg_generico_bi_prov BEFORE INSERT ON provincias
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_prov BEFORE UPDATE ON provincias
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_ciudad BEFORE INSERT ON ciudades
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_ciudad BEFORE UPDATE ON ciudades
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_suc BEFORE INSERT ON sucursales
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_suc BEFORE UPDATE ON sucursales
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_emp BEFORE INSERT ON empleados
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_emp BEFORE UPDATE ON empleados
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_camp BEFORE INSERT ON campanias_promocionales
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_camp BEFORE UPDATE ON campanias_promocionales
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_pf BEFORE INSERT ON productos_financieros
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_pf BEFORE UPDATE ON productos_financieros
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_hist BEFORE INSERT ON historico_tasas
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_hist BEFORE UPDATE ON historico_tasas
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_gar BEFORE INSERT ON garantes
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_gar BEFORE UPDATE ON garantes
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_sol BEFORE INSERT ON solicitudes_credito
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_sol BEFORE UPDATE ON solicitudes_credito
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_sg BEFORE INSERT ON solicitudes_garantes
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_sg BEFORE UPDATE ON solicitudes_garantes
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_cre BEFORE INSERT ON creditos
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_cre BEFORE UPDATE ON creditos
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_pen BEFORE INSERT ON penalizaciones
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_pen BEFORE UPDATE ON penalizaciones
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 CREATE TRIGGER trg_generico_bi_eval BEFORE INSERT ON evaluaciones_seguimiento
-FOR EACH ROW BEGIN IF NEW.created_by IS NULL THEN SET NEW.created_by = CURRENT_USER(); END IF; END$$
+FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_eval BEFORE UPDATE ON evaluaciones_seguimiento
-FOR EACH ROW BEGIN SET NEW.updated_by = CURRENT_USER(); IF NEW.is_deleted=1 AND OLD.is_deleted=0 THEN SET NEW.deleted_at=NOW(); IF NEW.deleted_by IS NULL THEN SET NEW.deleted_by=CURRENT_USER(); END IF; END IF; END$$
+FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
 -- Anti-aprobación sin garantes
 CREATE TRIGGER trg_sol_no_aprobar_sin_garante
@@ -1287,11 +1248,11 @@ BEFORE UPDATE ON solicitudes_credito
 FOR EACH ROW
 BEGIN
   DECLARE v_id_aprob INT; DECLARE v_cnt INT;
-  SELECT id INTO v_id_aprob FROM dom_estado_solicitud WHERE codigo='Aprobada';
+  SELECT id INTO v_id_aprob FROM estado_solicitud WHERE codigo='Aprobada';
   IF NEW.id_estado = v_id_aprob AND OLD.id_estado <> v_id_aprob THEN
     SELECT COUNT(*) INTO v_cnt
     FROM solicitudes_garantes
-    WHERE id_solicitud = OLD.id_solicitud AND is_deleted=0;
+    WHERE id_solicitud = OLD.id_solicitud AND borrado_logico=0;
     IF v_cnt < 1 THEN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='No se puede aprobar una solicitud sin garantes';
     END IF;
@@ -1307,7 +1268,7 @@ BEGIN
     IF EXISTS (
       SELECT 1 FROM historico_tasas h
       WHERE h.id_producto = NEW.id_producto
-        AND h.is_deleted=0
+        AND h.borrado_logico=0
         AND (
           (h.vigente_desde IS NULL AND h.vigente_hasta IS NULL) OR
           (NEW.vigente_hasta IS NULL AND (h.vigente_hasta IS NULL OR h.vigente_hasta >= NEW.vigente_desde)) OR
@@ -1323,156 +1284,6 @@ END$$
 DELIMITER ;
 
 -- =========================
--- 5.b) TRIGGERS DE AUDITORÍA CENTRALIZADA
--- =========================
-DELIMITER $$
-
-DROP TRIGGER IF EXISTS aud_clientes_ins $$
-DROP TRIGGER IF EXISTS aud_clientes_upd $$
-DROP TRIGGER IF EXISTS aud_clientes_del $$
-DROP TRIGGER IF EXISTS aud_pagos_ins $$
-DROP TRIGGER IF EXISTS aud_pagos_upd $$
-DROP TRIGGER IF EXISTS aud_pagos_del $$
-DROP TRIGGER IF EXISTS aud_creditos_ins $$
-DROP TRIGGER IF EXISTS aud_creditos_upd $$
-DROP TRIGGER IF EXISTS aud_creditos_del $$
-
-CREATE TRIGGER aud_clientes_ins
-AFTER INSERT ON clientes
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_eventos(tabla, pk_nombre, pk_valor, operacion, usuario, datos_despues)
-  VALUES ('clientes','id_cliente', NEW.id_cliente, 'INSERT', CURRENT_USER(),
-          JSON_OBJECT('id_cliente', NEW.id_cliente,'nombre', NEW.nombre,'apellido', NEW.apellido,'dni', NEW.dni,'id_estado', NEW.id_estado,'created_at', NEW.created_at));
-END$$
-
-CREATE TRIGGER aud_clientes_upd
-AFTER UPDATE ON clientes
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_eventos(tabla, pk_nombre, pk_valor, operacion, usuario, datos_antes, datos_despues)
-  VALUES ('clientes','id_cliente', NEW.id_cliente, 'UPDATE', CURRENT_USER(),
-          JSON_OBJECT('nombre', OLD.nombre,'apellido', OLD.apellido,'dni', OLD.dni,'id_estado', OLD.id_estado),
-          JSON_OBJECT('nombre', NEW.nombre,'apellido', NEW.apellido,'dni', NEW.dni,'id_estado', NEW.id_estado));
-END$$
-
-CREATE TRIGGER aud_clientes_del
-AFTER DELETE ON clientes
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_eventos(tabla, pk_nombre, pk_valor, operacion, usuario, datos_antes)
-  VALUES ('clientes','id_cliente', OLD.id_cliente, 'DELETE', CURRENT_USER(),
-          JSON_OBJECT('nombre', OLD.nombre,'apellido', OLD.apellido,'dni', OLD.dni,'id_estado', OLD.id_estado));
-END$$
-
-CREATE TRIGGER aud_pagos_ins
-AFTER INSERT ON pagos
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_eventos(tabla, pk_nombre, pk_valor, operacion, usuario, datos_despues)
-  VALUES ('pagos','id_pago', NEW.id_pago, 'INSERT', CURRENT_USER(),
-          JSON_OBJECT('id_pago', NEW.id_pago,'id_cuota', NEW.id_cuota,'monto_pagado', NEW.monto_pagado,'id_metodo', NEW.id_metodo,'dias_demora', NEW.dias_demora,'numero_comprobante', NEW.numero_comprobante));
-END$$
-
-CREATE TRIGGER aud_pagos_upd
-AFTER UPDATE ON pagos
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_eventos(tabla, pk_nombre, pk_valor, operacion, usuario, datos_antes, datos_despues)
-  VALUES ('pagos','id_pago', NEW.id_pago, 'UPDATE', CURRENT_USER(),
-          JSON_OBJECT('monto_pagado', OLD.monto_pagado,'id_metodo', OLD.id_metodo,'dias_demora', OLD.dias_demora),
-          JSON_OBJECT('monto_pagado', NEW.monto_pagado,'id_metodo', NEW.id_metodo,'dias_demora', NEW.dias_demora));
-END$$
-
-CREATE TRIGGER aud_pagos_del
-AFTER DELETE ON pagos
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_eventos(tabla, pk_nombre, pk_valor, operacion, usuario, datos_antes)
-  VALUES ('pagos','id_pago', OLD.id_pago, 'DELETE', CURRENT_USER(),
-          JSON_OBJECT('id_cuota', OLD.id_cuota,'monto_pagado', OLD.monto_pagado,'id_metodo', OLD.id_metodo));
-END$$
-
-CREATE TRIGGER aud_creditos_ins
-AFTER INSERT ON creditos
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_eventos(tabla, pk_nombre, pk_valor, operacion, usuario, datos_despues)
-  VALUES ('creditos','id_credito', NEW.id_credito, 'INSERT', CURRENT_USER(),
-          JSON_OBJECT('id_cliente', NEW.id_cliente,'id_producto', NEW.id_producto,'monto_otorgado', NEW.monto_otorgado,'tasa_interes', NEW.tasa_interes,'plazo_meses', NEW.plazo_meses,'id_estado', NEW.id_estado));
-END$$
-
-CREATE TRIGGER aud_creditos_upd
-AFTER UPDATE ON creditos
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_eventos(tabla, pk_nombre, pk_valor, operacion, usuario, datos_antes, datos_despues)
-  VALUES ('creditos','id_credito', NEW.id_credito, 'UPDATE', CURRENT_USER(),
-          JSON_OBJECT('monto_otorgado', OLD.monto_otorgado,'tasa_interes', OLD.tasa_interes,'plazo_meses', OLD.plazo_meses,'id_estado', OLD.id_estado),
-          JSON_OBJECT('monto_otorgado', NEW.monto_otorgado,'tasa_interes', NEW.tasa_interes,'plazo_meses', NEW.plazo_meses,'id_estado', NEW.id_estado));
-END$$
-
-CREATE TRIGGER aud_creditos_del
-AFTER DELETE ON creditos
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_eventos(tabla, pk_nombre, pk_valor, operacion, usuario, datos_antes)
-  VALUES ('creditos','id_credito', OLD.id_credito, 'DELETE', CURRENT_USER(),
-          JSON_OBJECT('id_cliente', OLD.id_cliente,'id_producto', OLD.id_producto,'monto_otorgado', OLD.monto_otorgado,'id_estado', OLD.id_estado));
-END$$
-
--- Auditoría de histórico de tasas -> auditoria_tasas
-DROP TRIGGER IF EXISTS aud_hist_tasas_ins $$
-DROP TRIGGER IF EXISTS aud_hist_tasas_upd $$
-
-CREATE TRIGGER aud_hist_tasas_ins
-AFTER INSERT ON historico_tasas
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_tasas(
-    id_historico,
-    id_producto,
-    tasa,
-    vigente_desde,
-    vigente_hasta,
-    operacion
-  )
-  VALUES (
-    NEW.id_historico,
-    NEW.id_producto,
-    NEW.tasa_nueva,
-    NEW.vigente_desde,
-    NEW.vigente_hasta,
-    'INSERT'
-  );
-END$$
-
-CREATE TRIGGER aud_hist_tasas_upd
-AFTER UPDATE ON historico_tasas
-FOR EACH ROW
-BEGIN
-  INSERT INTO auditoria_tasas(
-    id_historico,
-    id_producto,
-    tasa,
-    vigente_desde,
-    vigente_hasta,
-    operacion
-  )
-  VALUES (
-    NEW.id_historico,
-    NEW.id_producto,
-    NEW.tasa_nueva,
-    NEW.vigente_desde,
-    NEW.vigente_hasta,
-    'UPDATE'
-  );
-END$$
-
-DELIMITER ;
-
-
--- =========================
 -- 6) Backfill de vigencias (por si entran filas sin vigencia)
 -- =========================
 SET @old_sql_safe_updates := @@SQL_SAFE_UPDATES;
@@ -1485,7 +1296,7 @@ WITH ord AS (
     DATE(fecha_cambio) AS d_desde,
     LEAD(DATE(fecha_cambio)) OVER (PARTITION BY id_producto ORDER BY fecha_cambio) AS prox
   FROM historico_tasas
-  WHERE is_deleted = 0
+  WHERE borrado_logico = 0
 )
 UPDATE historico_tasas AS h
 JOIN ord AS o  ON o.id_historico = h.id_historico
@@ -1496,18 +1307,21 @@ SET
     CASE WHEN o.prox IS NULL THEN NULL ELSE DATE_SUB(o.prox, INTERVAL 1 DAY) END
   )
 WHERE (h.vigente_desde IS NULL OR h.vigente_hasta IS NULL)
-  AND h.is_deleted = 0;
+  AND h.borrado_logico = 0;
 
 SET SQL_SAFE_UPDATES = @old_sql_safe_updates;
 
 -- =========================
 -- 7) USUARIOS Y PERMISOS (mínimo 3)
 -- =========================
-CREATE USER IF NOT EXISTS 'admin_creditos'@'localhost' IDENTIFIED BY 'Admin2024$Secure';
+
+-- ADMIN GENERAL DEL SISTEMA DE CRÉDITOS
+CREATE USER IF NOT EXISTS 'admin_creditos'@'localhost' IDENTIFIED BY 'Admin2025$Secure';
 GRANT ALL PRIVILEGES ON gestion_creditos.* TO 'admin_creditos'@'localhost';
 GRANT CREATE USER ON *.* TO 'admin_creditos'@'localhost';
 
-CREATE USER IF NOT EXISTS 'analista_credito'@'localhost' IDENTIFIED BY 'Analista2024$Pass';
+-- ANALISTA DE CRÉDITO (ÁREA DE RIESGO / EVALUACIÓN)
+CREATE USER IF NOT EXISTS 'analista_credito'@'localhost' IDENTIFIED BY 'Analista2025$Pass';
 GRANT SELECT ON gestion_creditos.* TO 'analista_credito'@'localhost';
 GRANT UPDATE (puntaje_riesgo, id_analista, id_estado, fecha_evaluacion, observaciones)
   ON gestion_creditos.solicitudes_credito TO 'analista_credito'@'localhost';
@@ -1515,13 +1329,20 @@ GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_aprobar_solicitud   TO 'analista_
 GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_refinanciar_credito TO 'analista_credito'@'localhost';
 GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_asignar_evaluacion  TO 'analista_credito'@'localhost';
 
-CREATE USER IF NOT EXISTS 'gestor_cobranza'@'localhost' IDENTIFIED BY 'Cobranza2024$Key';
-GRANT SELECT ON gestion_creditos.clientes TO 'gestor_cobranza'@'localhost';
-GRANT SELECT ON gestion_creditos.creditos TO 'gestor_cobranza'@'localhost';
+-- GESTOR DE COBRANZA
+CREATE USER IF NOT EXISTS 'gestor_cobranza'@'localhost' IDENTIFIED BY 'Cobranza2025$Key';
+GRANT SELECT ON gestion_creditos.clientes      TO 'gestor_cobranza'@'localhost';
+GRANT SELECT ON gestion_creditos.creditos      TO 'gestor_cobranza'@'localhost';
 GRANT SELECT, UPDATE ON gestion_creditos.cuotas TO 'gestor_cobranza'@'localhost';
 GRANT SELECT, INSERT ON gestion_creditos.pagos TO 'gestor_cobranza'@'localhost';
 GRANT SELECT, INSERT ON gestion_creditos.penalizaciones TO 'gestor_cobranza'@'localhost';
 GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_registrar_pago TO 'gestor_cobranza'@'localhost';
+
+-- USUARIO DE MARKETING (REPORTES DE CAMPAÑAS)
+CREATE USER IF NOT EXISTS 'mkt'@'localhost' IDENTIFIED BY 'Mkt2025$Pass';
+GRANT SELECT ON gestion_creditos.campanias_promocionales TO 'mkt'@'localhost';
+GRANT SELECT ON gestion_creditos.campanias_clientes      TO 'mkt'@'localhost';
+GRANT SELECT ON gestion_creditos.creditos                TO 'mkt'@'localhost';
 
 FLUSH PRIVILEGES;
 SET sql_notes = 1;
