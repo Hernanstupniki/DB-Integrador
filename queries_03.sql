@@ -343,19 +343,7 @@ WHERE c.borrado_logico = 0
 GROUP BY c.plazo_meses
 ORDER BY c.plazo_meses;
 
--- Q19. Clientes con más de un crédito activo
-SELECT
-  cl.id_cliente, CONCAT(cl.nombre,' ',cl.apellido) AS cliente,
-  COUNT(*) AS creditos_activos
-FROM clientes cl
-JOIN creditos c ON c.id_cliente = cl.id_cliente AND c.borrado_logico=0
-WHERE cl.borrado_logico = 0
-  AND c.id_estado IN (@id_cre_act,@id_cre_mor)
-GROUP BY cl.id_cliente, cliente
-HAVING COUNT(*) > 1
-ORDER BY creditos_activos DESC, cliente;
-
--- Q20. Sucursales con mayor volumen otorgado – Top 15 (sin LIMIT)
+-- Q19. Sucursales con mayor volumen otorgado – Top 15 (sin LIMIT)
 WITH tot AS (
   SELECT
     s.id_sucursal, s.nombre,
@@ -376,7 +364,7 @@ WHERE (
 ) < 15
 ORDER BY t1.total_otorgado DESC, t1.id_sucursal;
 
--- Q21. Metodologías de pago más usadas
+-- Q20. Metodologías de pago más usadas
 SELECT
   mp.codigo AS metodo_pago,
   COUNT(*) AS cant
@@ -391,7 +379,7 @@ ORDER BY cant DESC;
    A.2) CONSULTAS DE MARKETING (22–30)
    ======================= */
 
--- Q22. Conversión por canal (global y 90 días)
+-- Q21. Conversión por canal (global y 90 días)
 SELECT
   canal,
   COUNT(*)                                 AS contactos,
@@ -403,7 +391,7 @@ FROM campanias_clientes
 GROUP BY canal
 ORDER BY conv_rate_pct DESC, contactos DESC;
 
--- Q23. Funnel por campaña (contactos → clientes únicos → conversiones)
+-- Q22. Funnel por campaña (contactos → clientes únicos → conversiones)
 SELECT
   cp.id_campania,
   cp.nombre,
@@ -417,7 +405,7 @@ WHERE cp.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre
 ORDER BY conversiones DESC;
 
--- Q24. ROAS y CPA por campaña (ingreso proxy = monto_otorgado atribuido)
+-- Q23. ROAS y CPA por campaña (ingreso proxy = monto_otorgado atribuido)
 SELECT
   cp.id_campania,
   cp.nombre,
@@ -436,7 +424,7 @@ WHERE cp.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre, cp.inversion_realizada
 ORDER BY roas DESC, ingreso_atr DESC;
 
--- Q25. Atribución "último toque" (campanias_clientes)
+-- Q24. Atribución "último toque" (campanias_clientes)
 WITH ult AS (
   SELECT
     id_cliente,
@@ -460,7 +448,7 @@ LEFT JOIN creditos cr ON cr.id_cliente = u.id_cliente AND cr.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre
 ORDER BY monto_otorgado_last_touch DESC;
 
--- Q26. Serie mensual de conversiones por canal
+-- Q25. Serie mensual de conversiones por canal
 SELECT
   DATE_FORMAT(fecha_contacto,'%Y-%m') AS yymm,
   canal,
@@ -469,7 +457,7 @@ FROM campanias_clientes
 GROUP BY yymm, canal
 ORDER BY yymm DESC, conversiones DESC;
 
--- Q27. Prospectos para retargeting (≥2 contactos 90d sin conversión) – Top 200
+-- Q26. Prospectos para retargeting (≥2 contactos 90d sin conversión) – Top 200
 WITH params AS (
   SELECT COALESCE(MAX(fecha_contacto), CURDATE()) base_ref FROM campanias_clientes
 ),
@@ -499,7 +487,7 @@ FROM ranked
 WHERE rk <= 200
 ORDER BY contactos_90d DESC, ultima_interaccion DESC, id_cliente;
 
--- Q28. Tasa de aprobación por analista
+-- Q27. Tasa de aprobación por analista
 SELECT
   e.id_empleado,
   CONCAT(e.nombre,' ',e.apellido) AS analista,
@@ -514,7 +502,7 @@ GROUP BY e.id_empleado, analista
 HAVING total_eval>0
 ORDER BY tasa_aprob_pct DESC, aprobadas DESC;
 
--- Q29. Cohorte por mes de solicitud → tasa de aprobación
+-- Q28. Cohorte por mes de solicitud → tasa de aprobación
 SELECT
   DATE_FORMAT(sc.fecha_solicitud,'%Y-%m') AS cohorte,
   COUNT(*) AS solicitudes,
@@ -525,7 +513,7 @@ WHERE sc.borrado_logico=0
 GROUP BY cohorte
 ORDER BY cohorte DESC;
 
--- Q30. Correlación simple: inversión vs créditos atribuidos
+-- Q29. Correlación simple: inversión vs créditos atribuidos
 SELECT
   cp.id_campania,
   cp.nombre,
@@ -670,11 +658,12 @@ GROUP BY cp.id_campania, cp.nombre, u.id_cliente;
 /* =======================
    PERMISOS
    ======================= */
-GRANT SELECT ON gestion_creditos.vw_cartera_cobranza        TO 'gestor_cobranza'@'localhost';
-GRANT SELECT ON gestion_creditos.vw_solicitudes_analista     TO 'analista_credito'@'localhost';
-GRANT SELECT ON gestion_creditos.vw_creditos_avance          TO 'admin_creditos'@'localhost';
-GRANT SELECT ON gestion_creditos.vw_kpi_campanias            TO 'mkt'@'localhost';
-GRANT SELECT ON gestion_creditos.vw_atribucion_ultimo_toque  TO 'mkt'@'localhost';
+GRANT SELECT ON gestion_creditos.vw_cartera_cobranza        TO 'gc_cobranza'@'localhost';
+GRANT SELECT ON gestion_creditos.vw_solicitudes_analista    TO 'gc_analista'@'localhost';
+GRANT SELECT ON gestion_creditos.vw_creditos_avance         TO 'gc_admin'@'localhost';
+GRANT SELECT ON gestion_creditos.vw_kpi_campanias           TO 'gc_marketing'@'localhost';
+GRANT SELECT ON gestion_creditos.vw_atribucion_ultimo_toque TO 'gc_marketing'@'localhost';
+
 FLUSH PRIVILEGES;
 
 
