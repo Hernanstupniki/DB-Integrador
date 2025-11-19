@@ -7,7 +7,7 @@
 -- ✓ SPs/funciones con validaciones de negocio
 -- ✓ Guardia en pagos: variable de sesión @__allow_pago_insert
 -- ✓ Anti-solape en histórico de tasas
--- ✓ Anti-aprobación sin garantes
+-- ✓ Anti-aprobación sin garantes (via trigger)
 -- ✓ Evita sobrepago de cuota
 -- ✓ Trazabilidad N:M: campanias_clientes
 -- ✓ Geografía escalable: provincias + ciudades (FKs) + columnas texto de compatibilidad
@@ -777,7 +777,6 @@ BEGIN
   DECLARE v_min DECIMAL(14,2); DECLARE v_max DECIMAL(14,2);
   DECLARE v_pmin INT; DECLARE v_pmax INT; DECLARE v_es_analista INT;
   DECLARE v_fecha_inicio DATE; DECLARE v_fecha_fin DATE; DECLARE v_id_credito INT;
-  DECLARE v_cnt_gar INT;
   DECLARE v_id_aprob INT; DECLARE v_id_enrev INT; DECLARE v_id_pend INT;
   DECLARE v_id_credito_activo INT;
 
@@ -797,13 +796,7 @@ BEGIN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Solicitud no válida o ya procesada';
     END IF;
 
-    SELECT COUNT(*) INTO v_cnt_gar
-    FROM solicitudes_garantes
-    WHERE id_solicitud=p_id_solicitud AND borrado_logico=0;
-    IF v_cnt_gar < 1 THEN
-      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La solicitud no posee garantes vinculados';
-    END IF;
-
+    -- Validación de rangos permitidos del producto
     SELECT id_cliente, id_producto, plazo_meses
       INTO v_id_cliente, v_id_producto, v_plazo
     FROM solicitudes_credito WHERE id_solicitud=p_id_solicitud FOR UPDATE;
@@ -819,6 +812,7 @@ BEGIN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Plazo fuera de los límites del producto';
     END IF;
 
+    -- Validar que el analista tenga el cargo correcto
     SELECT COUNT(*) INTO v_es_analista
     FROM empleados e
     JOIN cargo_empleado c ON c.id=e.id_cargo AND c.codigo='Analista_Credito'
@@ -919,23 +913,6 @@ BEGIN
       END
     WHERE id_cuota=p_id_cuota;
 
-    UPDATE creditos c
-    JOIN (
-      SELECT id_credito,
-             SUM(id_estado IN (v_id_pagada, v_id_pag_mora)) pagadas,
-             SUM(id_estado = v_id_vencida) vencidas,
-             COUNT(*) total
-      FROM cuotas WHERE id_credito = (SELECT id_credito FROM cuotas WHERE id_cuota=p_id_cuota) AND borrado_logico=0
-      GROUP BY id_credito
-    ) x ON x.id_credito = c.id_credito
-    JOIN estado_credito ec_act ON ec_act.codigo='Activo'
-    JOIN estado_credito ec_mor ON ec_mor.codigo='En_Mora'
-    JOIN estado_credito ec_pag ON ec_pag.codigo='Pagado'
-    SET c.id_estado = CASE
-                        WHEN x.pagadas = x.total THEN ec_pag.id
-                        WHEN x.vencidas > 0 THEN ec_mor.id
-                        ELSE ec_act.id
-                      END;
   COMMIT;
 END$$
 
@@ -1312,37 +1289,42 @@ WHERE (h.vigente_desde IS NULL OR h.vigente_hasta IS NULL)
 SET SQL_SAFE_UPDATES = @old_sql_safe_updates;
 
 -- =========================
--- 7) USUARIOS Y PERMISOS (mínimo 3)
+-- 7) USUARIOS Y PERMISOS
 -- =========================
 
--- ADMIN GENERAL DEL SISTEMA DE CRÉDITOS
-CREATE USER IF NOT EXISTS 'admin_creditos'@'localhost' IDENTIFIED BY 'Admin2025$Secure';
-GRANT ALL PRIVILEGES ON gestion_creditos.* TO 'admin_creditos'@'localhost';
-GRANT CREATE USER ON *.* TO 'admin_creditos'@'localhost';
+-- Administrador general del sistema de créditos
+CREATE USER IF NOT EXISTS 'gc_admin'@'localhost'
+  IDENTIFIED BY 'integradorbasededatos_admin';
+GRANT ALL PRIVILEGES ON gestion_creditos.* TO 'gc_admin'@'localhost';
+GRANT CREATE USER ON *.* TO 'gc_admin'@'localhost';
 
--- ANALISTA DE CRÉDITO (ÁREA DE RIESGO / EVALUACIÓN)
-CREATE USER IF NOT EXISTS 'analista_credito'@'localhost' IDENTIFIED BY 'Analista2025$Pass';
-GRANT SELECT ON gestion_creditos.* TO 'analista_credito'@'localhost';
+-- Analista de crédito (área de evaluación y riesgo)
+CREATE USER IF NOT EXISTS 'gc_analista'@'localhost'
+  IDENTIFIED BY 'integradorbasededatos_analista';
+GRANT SELECT ON gestion_creditos.* TO 'gc_analista'@'localhost';
 GRANT UPDATE (puntaje_riesgo, id_analista, id_estado, fecha_evaluacion, observaciones)
-  ON gestion_creditos.solicitudes_credito TO 'analista_credito'@'localhost';
-GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_aprobar_solicitud   TO 'analista_credito'@'localhost';
-GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_refinanciar_credito TO 'analista_credito'@'localhost';
-GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_asignar_evaluacion  TO 'analista_credito'@'localhost';
+  ON gestion_creditos.solicitudes_credito TO 'gc_analista'@'localhost';
+GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_aprobar_solicitud   TO 'gc_analista'@'localhost';
+GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_refinanciar_credito TO 'gc_analista'@'localhost';
+GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_asignar_evaluacion  TO 'gc_analista'@'localhost';
 
--- GESTOR DE COBRANZA
-CREATE USER IF NOT EXISTS 'gestor_cobranza'@'localhost' IDENTIFIED BY 'Cobranza2025$Key';
-GRANT SELECT ON gestion_creditos.clientes      TO 'gestor_cobranza'@'localhost';
-GRANT SELECT ON gestion_creditos.creditos      TO 'gestor_cobranza'@'localhost';
-GRANT SELECT, UPDATE ON gestion_creditos.cuotas TO 'gestor_cobranza'@'localhost';
-GRANT SELECT, INSERT ON gestion_creditos.pagos TO 'gestor_cobranza'@'localhost';
-GRANT SELECT, INSERT ON gestion_creditos.penalizaciones TO 'gestor_cobranza'@'localhost';
-GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_registrar_pago TO 'gestor_cobranza'@'localhost';
+-- Gestor de cobranza
+CREATE USER IF NOT EXISTS 'gc_cobranza'@'localhost'
+  IDENTIFIED BY 'integradorbasededatos_cobranza';
+GRANT SELECT ON gestion_creditos.clientes       TO 'gc_cobranza'@'localhost';
+GRANT SELECT ON gestion_creditos.creditos       TO 'gc_cobranza'@'localhost';
+GRANT SELECT, UPDATE ON gestion_creditos.cuotas TO 'gc_cobranza'@'localhost';
+GRANT SELECT, INSERT ON gestion_creditos.pagos  TO 'gc_cobranza'@'localhost';
+GRANT SELECT, INSERT ON gestion_creditos.penalizaciones TO 'gc_cobranza'@'localhost';
+GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_registrar_pago TO 'gc_cobranza'@'localhost';
 
--- USUARIO DE MARKETING (REPORTES DE CAMPAÑAS)
-CREATE USER IF NOT EXISTS 'mkt'@'localhost' IDENTIFIED BY 'Mkt2025$Pass';
-GRANT SELECT ON gestion_creditos.campanias_promocionales TO 'mkt'@'localhost';
-GRANT SELECT ON gestion_creditos.campanias_clientes      TO 'mkt'@'localhost';
-GRANT SELECT ON gestion_creditos.creditos                TO 'mkt'@'localhost';
+-- Usuario de marketing (reportes de campañas)
+CREATE USER IF NOT EXISTS 'gc_marketing'@'localhost'
+  IDENTIFIED BY 'integradorbasededatos_marketing';
+GRANT SELECT ON gestion_creditos.campanias_promocionales TO 'gc_marketing'@'localhost';
+GRANT SELECT ON gestion_creditos.campanias_clientes      TO 'gc_marketing'@'localhost';
+GRANT SELECT ON gestion_creditos.creditos                TO 'gc_marketing'@'localhost';
 
 FLUSH PRIVILEGES;
 SET sql_notes = 1;
+
