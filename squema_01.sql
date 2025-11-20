@@ -1,18 +1,11 @@
--- =====================================================
--- SISTEMA DE GESTIÓN DE CRÉDITOS Y COBRANZAS (MEJORADO, ESCALABLE GEO)
--- MySQL 8.x - Sin ENGINE / CHARSET / COLLATE explícitos
--- ✓ Soft-delete + auditoría (alta/mod/baja)
--- ✓ Catálogos (sin ENUM) + DOM
--- ✓ Penalización AFTER INSERT en pagos (tasa diaria 0.0005)
--- ✓ SPs/funciones con validaciones de negocio
--- ✓ Guardia en pagos: variable de sesión @__allow_pago_insert
--- ✓ Anti-solape en histórico de tasas
--- ✓ Anti-aprobación sin garantes (via trigger)
--- ✓ Evita sobrepago de cuota
--- ✓ Trazabilidad N:M: campanias_clientes
--- ✓ Geografía escalable: provincias + ciudades (FKs) + columnas texto de compatibilidad
--- SIN INSERTS de datos (cargar con seed_02.sql)
--- =====================================================
+-- Integrador Base de Datos
+-- Fecha: 20-11-2025
+-- Profesor: Mgst. Ing. Gonzalo Pallotta.
+-- Alumnos: Silveyra Tomas, Waniukiewicz Nicolas, Stupniki Hernan, Tarnowski Tobias.
+-- Sistema de Gestion de Creditos y Cobranzas
+-- Esquema de Base de Datos: gestion_creditos
+
+-- UN 7 PARA APROBAR LA MATERIA PROFEEE
 
 DROP DATABASE IF EXISTS gestion_creditos;
 CREATE DATABASE gestion_creditos;
@@ -21,9 +14,7 @@ USE gestion_creditos;
 SET FOREIGN_KEY_CHECKS = 0;
 SET sql_notes = 0;
 
--- =========================
--- 0) TABLAS DE DOMINIO
--- =========================
+-- 0) Tablas de dominio
 CREATE TABLE estado_sucursal (
   id INT AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(50) NOT NULL UNIQUE,
@@ -206,9 +197,7 @@ CREATE TABLE comp_pago (
   usuario_baja VARCHAR(100)
 );
 
--- =========================
--- 1) MAESTROS GEO (escalable)
--- =========================
+-- 1) MAESTROS GEO
 CREATE TABLE provincias (
   id_provincia INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
@@ -240,9 +229,8 @@ CREATE TABLE ciudades (
   FOREIGN KEY (id_provincia) REFERENCES provincias(id_provincia)
 );
 
--- =========================
--- 2) NEGOCIO
--- =========================
+
+-- 2) Negocio
 CREATE TABLE campanias_promocionales (
   id_campania INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
@@ -251,7 +239,7 @@ CREATE TABLE campanias_promocionales (
   fecha_inicio DATE NOT NULL,
   fecha_fin DATE NOT NULL,
   descuento_porcentaje DECIMAL(7,3),
-  id_estado INT NOT NULL, -- estado_campania
+  id_estado INT NOT NULL,
   presupuesto DECIMAL(14,2),
   inversion_realizada DECIMAL(14,2) DEFAULT 0,
   clientes_captados INT DEFAULT 0,
@@ -273,13 +261,13 @@ CREATE TABLE sucursales (
   id_sucursal INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
   id_provincia INT NOT NULL,
-  id_ciudad INT NULL,             -- NUEVO FK (escalable)
-  ciudad VARCHAR(50) NOT NULL,    -- compatibilidad con seeds actuales
+  id_ciudad INT NULL,
+  ciudad VARCHAR(50) NOT NULL,
   direccion VARCHAR(200),
   telefono VARCHAR(20),
   email VARCHAR(100),
   fecha_apertura DATE,
-  id_estado INT NOT NULL, -- estado_sucursal
+  id_estado INT NOT NULL,
   borrado_logico TINYINT(1) NOT NULL DEFAULT 0,
   fecha_alta TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   usuario_alta VARCHAR(100),
@@ -333,10 +321,10 @@ CREATE TABLE clientes (
   email VARCHAR(100),
   telefono VARCHAR(20),
   direccion VARCHAR(200),
-  ciudad VARCHAR(50),              -- compatibilidad
-  provincia VARCHAR(50),           -- compatibilidad
-  id_provincia INT NULL,           -- NUEVO FK escalable
-  id_ciudad INT NULL,              -- NUEVO FK escalable
+  ciudad VARCHAR(50),
+  provincia VARCHAR(50),
+  id_provincia INT NULL,
+  id_ciudad INT NULL,
   ingresos_declarados DECIMAL(12,2) DEFAULT 0 CHECK (ingresos_declarados >= 0),
   id_situacion_laboral INT,
   id_campania_ingreso INT NULL,
@@ -658,9 +646,7 @@ CREATE TABLE campanias_clientes (
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- =========================
--- 3) ÍNDICES ADICIONALES
--- =========================
+-- 3) iNDICES ADICIONALES
 CREATE INDEX idx_solicitud_producto_fecha
   ON solicitudes_credito(id_producto, fecha_solicitud, id_estado);
 
@@ -676,9 +662,7 @@ CREATE INDEX idx_empleado_sucursal_cargo
 CREATE INDEX idx_cliente_provincia_estado
   ON clientes(provincia_norm, id_estado);
 
--- =========================
 -- 4) FUNCIONES & PROCEDURES
--- =========================
 DELIMITER $$
 
 CREATE FUNCTION fn_calcular_mora(monto DECIMAL(14,2), dias INT, tasa_diaria DECIMAL(7,5))
@@ -793,10 +777,10 @@ BEGIN
       SELECT 1 FROM solicitudes_credito
       WHERE id_solicitud=p_id_solicitud AND borrado_logico=0 AND id_estado IN (v_id_pend, v_id_enrev)
     ) THEN
-      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Solicitud no válida o ya procesada';
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Solicitud no valida o ya procesada';
     END IF;
 
-    -- Validación de rangos permitidos del producto
+    -- Validacion de rangos permitidos del producto
     SELECT id_cliente, id_producto, plazo_meses
       INTO v_id_cliente, v_id_producto, v_plazo
     FROM solicitudes_credito WHERE id_solicitud=p_id_solicitud FOR UPDATE;
@@ -806,10 +790,10 @@ BEGIN
     FROM productos_financieros WHERE id_producto=v_id_producto AND borrado_logico=0 FOR UPDATE;
 
     IF p_monto_aprobado < v_min OR p_monto_aprobado > v_max THEN
-      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Monto fuera de los límites del producto';
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Monto fuera de los limites del producto';
     END IF;
     IF v_plazo < v_pmin OR v_plazo > v_pmax THEN
-      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Plazo fuera de los límites del producto';
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Plazo fuera de los limites del producto';
     END IF;
 
     -- Validar que el analista tenga el cargo correcto
@@ -934,7 +918,7 @@ BEGIN
   SELECT id INTO v_id_enrev FROM estado_solicitud WHERE codigo='En_Revision';
 
   IF v_decision NOT IN ('APROBADA','RECHAZADA','EN_REVISION') THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Decisión inválida (Aprobada|Rechazada|En_Revision)';
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Decision invalida (Aprobada|Rechazada|En_Revision)';
   END IF;
 
   UPDATE solicitudes_credito
@@ -962,7 +946,7 @@ BEGIN
   DECLARE v_id_act INT; DECLARE v_id_ref INT;
 
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
-  BEGIN ROLLBACK; SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Error en refinanciación'; END;
+  BEGIN ROLLBACK; SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Error en refinanciacion'; END;
 
   SELECT id INTO v_id_act FROM estado_credito WHERE codigo='Activo';
   SELECT id INTO v_id_ref FROM estado_credito WHERE codigo='Refinanciado';
@@ -971,7 +955,7 @@ BEGIN
     IF NOT EXISTS (
       SELECT 1 FROM creditos WHERE id_credito=p_id_credito_original AND borrado_logico=0 AND id_estado IN (v_id_act)
     ) THEN
-      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Crédito no válido para refinanciación';
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Credito no valido para refinanciacion';
     END IF;
 
     SELECT id_cliente, id_producto, id_solicitud
@@ -999,9 +983,7 @@ END$$
 
 DELIMITER ;
 
--- =========================
--- 5) TRIGGERS (auditoría + blindaje, sin auditoria_tasas / auditoria_eventos)
--- =========================
+-- 5) TRIGGERS (auditoria + blindaje, sin auditoria_tasas / auditoria_eventos)
 DELIMITER $$
 
 -- Limpieza por rerun (drops)
@@ -1069,7 +1051,7 @@ BEGIN
   DECLARE v_venc DATE;
   IF COALESCE(@__allow_pago_insert, 0) <> 1 THEN
     SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'Inserción directa en pagos no permitida. Use sp_registrar_pago.';
+      SET MESSAGE_TEXT = 'Insercion directa en pagos no permitida. Use sp_registrar_pago.';
   END IF;
 
   SELECT fecha_vencimiento INTO v_venc
@@ -1153,7 +1135,7 @@ BEGIN
   END IF;
 END$$
 
--- Triggers genéricos metadatos (incluye provincias/ciudades)
+-- Triggers genericos metadatos (provincias/ciudades)
 CREATE TRIGGER trg_generico_bi_prov BEFORE INSERT ON provincias
 FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_prov BEFORE UPDATE ON provincias
@@ -1219,7 +1201,7 @@ FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRE
 CREATE TRIGGER trg_generico_bu_eval BEFORE UPDATE ON evaluaciones_seguimiento
 FOR EACH ROW BEGIN SET NEW.usuario_modificacion = CURRENT_USER(); IF NEW.borrado_logico=1 AND OLD.borrado_logico=0 THEN SET NEW.fecha_baja=NOW(); IF NEW.usuario_baja IS NULL THEN SET NEW.usuario_baja=CURRENT_USER(); END IF; END IF; END$$
 
--- Anti-aprobación sin garantes
+-- Anti-aprobacion sin garantes
 CREATE TRIGGER trg_sol_no_aprobar_sin_garante
 BEFORE UPDATE ON solicitudes_credito
 FOR EACH ROW
@@ -1260,9 +1242,7 @@ END$$
 
 DELIMITER ;
 
--- =========================
 -- 6) Backfill de vigencias (por si entran filas sin vigencia)
--- =========================
 SET @old_sql_safe_updates := @@SQL_SAFE_UPDATES;
 SET SQL_SAFE_UPDATES = 0;
 
@@ -1288,17 +1268,15 @@ WHERE (h.vigente_desde IS NULL OR h.vigente_hasta IS NULL)
 
 SET SQL_SAFE_UPDATES = @old_sql_safe_updates;
 
--- =========================
--- 7) USUARIOS Y PERMISOS
--- =========================
+-- 7) Usuarios y permisos
 
--- Administrador general del sistema de créditos
+-- Administrador general del sistema de creditos
 CREATE USER IF NOT EXISTS 'gc_admin'@'localhost'
   IDENTIFIED BY 'integradorbasededatos_admin';
 GRANT ALL PRIVILEGES ON gestion_creditos.* TO 'gc_admin'@'localhost';
 GRANT CREATE USER ON *.* TO 'gc_admin'@'localhost';
 
--- Analista de crédito (área de evaluación y riesgo)
+-- Analista de credito (area de evaluacion y riesgo)
 CREATE USER IF NOT EXISTS 'gc_analista'@'localhost'
   IDENTIFIED BY 'integradorbasededatos_analista';
 GRANT SELECT ON gestion_creditos.* TO 'gc_analista'@'localhost';
@@ -1318,7 +1296,7 @@ GRANT SELECT, INSERT ON gestion_creditos.pagos  TO 'gc_cobranza'@'localhost';
 GRANT SELECT, INSERT ON gestion_creditos.penalizaciones TO 'gc_cobranza'@'localhost';
 GRANT EXECUTE ON PROCEDURE gestion_creditos.sp_registrar_pago TO 'gc_cobranza'@'localhost';
 
--- Usuario de marketing (reportes de campañas)
+-- Usuario de marketing
 CREATE USER IF NOT EXISTS 'gc_marketing'@'localhost'
   IDENTIFIED BY 'integradorbasededatos_marketing';
 GRANT SELECT ON gestion_creditos.campanias_promocionales TO 'gc_marketing'@'localhost';
@@ -1327,4 +1305,3 @@ GRANT SELECT ON gestion_creditos.creditos                TO 'gc_marketing'@'loca
 
 FLUSH PRIVILEGES;
 SET sql_notes = 1;
-
