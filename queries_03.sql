@@ -651,7 +651,7 @@ GROUP BY cp.id_campania, cp.nombre, u.id_cliente;
 
 
 
--- PERMISOS
+-- Permisos
 GRANT SELECT ON gestion_creditos.vw_cartera_cobranza        TO 'gc_cobranza'@'localhost';
 GRANT SELECT ON gestion_creditos.vw_solicitudes_analista    TO 'gc_analista'@'localhost';
 GRANT SELECT ON gestion_creditos.vw_creditos_avance         TO 'gc_admin'@'localhost';
@@ -661,7 +661,7 @@ GRANT SELECT ON gestion_creditos.vw_atribucion_ultimo_toque TO 'gc_marketing'@'l
 FLUSH PRIVILEGES;
 
 
--- TRANSACCIONES (T1–T2)
+-- Transacciones (T1–T2)
 
 -- T1. Refinanciacion segura (envuelve reglas + genera nuevas cuotas)
 DROP PROCEDURE IF EXISTS sp_tx_refinanciar_si_mora;
