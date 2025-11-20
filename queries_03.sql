@@ -1,14 +1,10 @@
-/* ===========================================================
-   QUERIES_03.SQL  – Reporting, Vistas y Transacciones (DOM)
-   Esquema: gestion_creditos      (MySQL 8)
-   Depende de: esquema_01.sql + seed_02.sql
-   =========================================================== */
+-- Sistema de Gestion de Creditos y Cobranzas
+-- consultas realizadas de Base de Datos: gestion_creditos
+
 
 USE gestion_creditos;
 
--- =========================
--- Variables de dominio (solo CONSULTAS y SPs; NO en VISTAS)
--- =========================
+-- Variables de dominio (solo consultas y sps; no en vistas)
 SET @id_cuo_pend   = (SELECT id FROM estado_cuota     WHERE codigo='Pendiente');
 SET @id_cuo_pag    = (SELECT id FROM estado_cuota     WHERE codigo='Pagada');
 SET @id_cuo_venc   = (SELECT id FROM estado_cuota     WHERE codigo='Vencida');
@@ -27,11 +23,9 @@ SET @id_cargo_an = (SELECT id FROM cargo_empleado WHERE codigo='Analista_Credito
 SET @id_met_trf  = (SELECT id FROM metodo_pago    WHERE codigo='Transferencia');
 
 
-/* =======================
-   A) CONSULTAS (1–21)
-   ======================= */
+-- CONSULTAS (1–21)
 
--- Q1. Cartera por tipo de producto y estado del crédito
+-- Q1. Cartera por tipo de producto y estado del credito
 SELECT
   tp.codigo AS tipo_producto,
   ec.codigo AS estado_credito,
@@ -46,7 +40,7 @@ GROUP BY tp.codigo, ec.codigo
 ORDER BY tp.codigo,
          FIELD(ec.codigo,'Activo','En_Mora','Refinanciado','Pagado','Cancelado');
 
--- Q2. Mora promedio (en días) por sucursal (solo vencidas o pagadas con mora)
+-- Q2. Mora promedio (en dias) por sucursal (solo vencidas o pagadas con mora)
 SELECT
   s.id_sucursal,
   s.nombre AS sucursal,
@@ -86,20 +80,24 @@ WHERE (
 ) < 50
 ORDER BY d1.deuda_vigente DESC, d1.id_cliente;
 
--- Q4. Campañas: captación y créditos generados
+-- Q4. Campañas: captacion y creditos generados
 SELECT
   cp.id_campania,
   cp.nombre,
-  cp.clientes_captados,
-  COUNT(DISTINCT cr.id_credito) AS creditos_generados
+  COUNT(DISTINCT cl.id_cliente)       AS clientes_captados,    -- <- ahora se calcula
+  COUNT(DISTINCT cr.id_credito)       AS creditos_generados
 FROM campanias_promocionales cp
-LEFT JOIN clientes  cl ON cl.id_campania_ingreso = cp.id_campania AND cl.borrado_logico = 0
-LEFT JOIN creditos  cr ON cr.id_cliente = cl.id_cliente AND cr.borrado_logico = 0
+LEFT JOIN clientes  cl 
+       ON cl.id_campania_ingreso = cp.id_campania 
+      AND cl.borrado_logico = 0
+LEFT JOIN creditos  cr 
+       ON cr.id_cliente = cl.id_cliente 
+      AND cr.borrado_logico = 0
 WHERE cp.borrado_logico = 0
-GROUP BY cp.id_campania, cp.nombre, cp.clientes_captados
-ORDER BY creditos_generados DESC, cp.clientes_captados DESC;
+GROUP BY cp.id_campania, cp.nombre
+ORDER BY creditos_generados DESC, clientes_captados DESC;
 
--- Q5. Top 5 deudores por sucursal (ranking por partición)
+-- Q5. Top 5 deudores por sucursal (ranking por particion)
 WITH deuda AS (
   SELECT
     s.id_sucursal,
@@ -144,22 +142,28 @@ WHERE (
 ) < 10
 ORDER BY t1.total_otorgado DESC, t1.id_producto;
 
--- Q7. Productividad de analistas (pend/rev/apr/rec)
+
+-- Q7
 SELECT
   e.id_empleado AS id_analista,
   CONCAT(e.nombre,' ',e.apellido) AS analista,
-  SUM(sc.id_estado=@id_sol_pend)  AS pend,
-  SUM(sc.id_estado=@id_sol_enrev) AS rev,
-  SUM(sc.id_estado=@id_sol_aprb)  AS apr,
-  SUM(sc.id_estado=@id_sol_rech)  AS rec
+  SUM(CASE WHEN sc.id_estado = @id_sol_pend THEN 1 ELSE 0 END)  AS pend,
+  SUM(CASE WHEN sc.id_estado = @id_sol_enrev THEN 1 ELSE 0 END) AS rev,
+  SUM(CASE WHEN sc.id_estado = @id_sol_aprb THEN 1 ELSE 0 END)  AS apr,
+  SUM(CASE WHEN sc.id_estado = @id_sol_rech THEN 1 ELSE 0 END)  AS rec
 FROM empleados e
-JOIN cargo_empleado ce ON ce.id=e.id_cargo AND ce.codigo='Analista_Credito'
-LEFT JOIN solicitudes_credito sc ON sc.id_analista = e.id_empleado AND sc.borrado_logico = 0
+JOIN cargo_empleado ce 
+    ON ce.id = e.id_cargo 
+   AND ce.codigo = 'Analista_Credito'
+LEFT JOIN solicitudes_credito sc 
+    ON sc.id_analista = e.id_empleado 
+   AND sc.borrado_logico = 0
 WHERE e.borrado_logico = 0
 GROUP BY e.id_empleado, analista
 ORDER BY apr DESC, rec DESC;
 
--- Q8. Penalizaciones cobradas por mes (últimos 12 meses)
+
+-- Q8. Penalizaciones cobradas por mes (ultimos 12 meses)
 SELECT
   DATE_FORMAT(p.fecha_aplicacion, '%Y-%m') AS yymm,
   ROUND(SUM(p.monto_penalizacion), 2) AS penalizacion_mes
@@ -169,7 +173,7 @@ WHERE p.borrado_logico = 0
 GROUP BY yymm
 ORDER BY yymm DESC;
 
--- Q9. Cuotas que vencen en los próximos 15 días
+-- Q9. Cuotas que vencen en los proximos 15 dias
 SELECT
   cu.id_cuota, cu.fecha_vencimiento, ecu.codigo AS estado_cuota,
   cr.id_credito, cl.id_cliente, CONCAT(cl.nombre,' ',cl.apellido) AS cliente
@@ -191,7 +195,7 @@ FROM productos_financieros pf
 WHERE pf.borrado_logico = 0
 ORDER BY ABS(delta) DESC;
 
--- Q11. Tiempo promedio de evaluación por estado
+-- Q11. Tiempo promedio de evaluacion por estado
 SELECT
   es.codigo AS estado_solicitud,
   ROUND(AVG(DATEDIFF(COALESCE(sc.fecha_evaluacion, NOW()), sc.fecha_solicitud)), 2) AS dias_promedio
@@ -201,7 +205,7 @@ WHERE sc.borrado_logico = 0
 GROUP BY es.codigo
 ORDER BY dias_promedio DESC;
 
--- Q12. Avance proporcional (%) por crédito – Top 150 (sin LIMIT)
+-- Q12. Avance proporcional (%) por credito – Top 150 (sin LIMIT)
 WITH avance AS (
   SELECT
     c.id_credito,
@@ -243,7 +247,7 @@ WHERE cl.borrado_logico = 0
 GROUP BY cl.id_cliente, cliente, ec.codigo
 ORDER BY deuda DESC;
 
--- Q14. Eficacia de campañas (ratio créditos / captados)
+-- Q14. Eficacia de campañas (ratio creditos / captados)
 SELECT
   cp.id_campania, cp.nombre,
   cp.clientes_captados AS captados,
@@ -278,7 +282,7 @@ FROM (
 WHERE rk <= 3
 ORDER BY rk;
 
--- Q16. Cambios de tasa últimos 12 meses (no solapadas)
+-- Q16. Cambios de tasa ultimos 12 meses (no solapadas)
 WITH mov AS (
   SELECT
     h.id_producto,
@@ -334,7 +338,7 @@ WHERE cu.borrado_logico = 0
   AND YEAR(cu.fecha_vencimiento) = YEAR(CURDATE())
   AND MONTH(cu.fecha_vencimiento) = MONTH(CURDATE());
 
--- Q18. Distribución de plazos
+-- Q18. Distribucion de plazos
 SELECT
   c.plazo_meses,
   COUNT(*) AS creditos
@@ -364,7 +368,7 @@ WHERE (
 ) < 15
 ORDER BY t1.total_otorgado DESC, t1.id_sucursal;
 
--- Q20. Metodologías de pago más usadas
+-- Q20. Metodologias de pago mas usadas
 SELECT
   mp.codigo AS metodo_pago,
   COUNT(*) AS cant
@@ -375,11 +379,11 @@ GROUP BY mp.codigo
 ORDER BY cant DESC;
 
 
-/* =======================
-   A.2) CONSULTAS DE MARKETING (22–30)
-   ======================= */
 
--- Q21. Conversión por canal (global y 90 días)
+-- CONSULTAS DE MARKETING (22–30)
+
+
+-- Q21. Conversion por canal (global y 90 dias)
 SELECT
   canal,
   COUNT(*)                                 AS contactos,
@@ -391,7 +395,7 @@ FROM campanias_clientes
 GROUP BY canal
 ORDER BY conv_rate_pct DESC, contactos DESC;
 
--- Q22. Funnel por campaña (contactos → clientes únicos → conversiones)
+-- Q22. Funnel por campaña (contactos → clientes unicos → conversiones)
 SELECT
   cp.id_campania,
   cp.nombre,
@@ -424,7 +428,7 @@ WHERE cp.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre, cp.inversion_realizada
 ORDER BY roas DESC, ingreso_atr DESC;
 
--- Q24. Atribución "último toque" (campanias_clientes)
+-- Q24. Atribucion "ultimo toque" (campanias_clientes)
 WITH ult AS (
   SELECT
     id_cliente,
@@ -457,37 +461,29 @@ FROM campanias_clientes
 GROUP BY yymm, canal
 ORDER BY yymm DESC, conversiones DESC;
 
--- Q26. Prospectos para retargeting (≥2 contactos 90d sin conversión) – Top 200
+-- Q26. Prospectos para retargeting (≥2 contactos 90d sin conversion) – Top 200
 WITH params AS (
   SELECT COALESCE(MAX(fecha_contacto), CURDATE()) base_ref FROM campanias_clientes
 ),
 base AS (
   SELECT
     c.id_cliente,
-    COUNT(*)                           AS contactos_90d,
-    SUM(c.resultado='Convirtio')       AS convs_90d,
-    MAX(c.fecha_contacto)              AS ultima_interaccion,
-    COUNT(DISTINCT c.canal)            AS canales_distintos
+    COUNT(*)                     AS contactos_90d,
+    SUM(c.resultado='Convirtio') AS convs_90d,
+    MAX(c.fecha_contacto)        AS ultima_interaccion,
+    COUNT(DISTINCT c.canal)      AS canales_distintos
   FROM campanias_clientes c
   CROSS JOIN params p
-  WHERE c.borrado_logico=0
+  WHERE c.borrado_logico = 0
     AND c.fecha_contacto >= DATE_SUB(p.base_ref, INTERVAL 90 DAY)
   GROUP BY c.id_cliente
-  HAVING convs_90d = 0 AND contactos_90d >= 2
-),
-ranked AS (
-  SELECT b.*,
-         DENSE_RANK() OVER (
-           ORDER BY b.contactos_90d DESC, b.ultima_interaccion DESC, b.id_cliente
-         ) AS rk
-  FROM base b
 )
 SELECT *
-FROM ranked
-WHERE rk <= 200
-ORDER BY contactos_90d DESC, ultima_interaccion DESC, id_cliente;
+FROM base
+ORDER BY convs_90d DESC, contactos_90d DESC;
 
--- Q27. Tasa de aprobación por analista
+
+-- Q27. Tasa de aprobacion por analista
 SELECT
   e.id_empleado,
   CONCAT(e.nombre,' ',e.apellido) AS analista,
@@ -502,7 +498,7 @@ GROUP BY e.id_empleado, analista
 HAVING total_eval>0
 ORDER BY tasa_aprob_pct DESC, aprobadas DESC;
 
--- Q28. Cohorte por mes de solicitud → tasa de aprobación
+-- Q28. Cohorte por mes de solicitud → tasa de aprobacion
 SELECT
   DATE_FORMAT(sc.fecha_solicitud,'%Y-%m') AS cohorte,
   COUNT(*) AS solicitudes,
@@ -513,7 +509,7 @@ WHERE sc.borrado_logico=0
 GROUP BY cohorte
 ORDER BY cohorte DESC;
 
--- Q29. Correlación simple: inversión vs créditos atribuidos
+-- Q29. Correlacion simple: inversion vs creditos atribuidos
 SELECT
   cp.id_campania,
   cp.nombre,
@@ -526,9 +522,8 @@ GROUP BY cp.id_campania, cp.nombre, cp.inversion_realizada
 ORDER BY cp.inversion_realizada DESC;
 
 
-/* =======================
-   B) VISTAS (SQL SECURITY INVOKER)
-   ======================= */
+
+-- VISTAS (SQL SECURITY INVOKER)
 
 -- V1. Cartera de cobranza
 DROP VIEW IF EXISTS vw_cartera_cobranza;
@@ -571,7 +566,7 @@ JOIN productos_financieros pf ON pf.id_producto = sc.id_producto AND pf.borrado_
 JOIN estado_solicitud es ON es.id=sc.id_estado
 WHERE sc.borrado_logico = 0;
 
--- V3. Avance por crédito
+-- V3. Avance por credito
 DROP VIEW IF EXISTS vw_creditos_avance;
 CREATE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_creditos_avance AS
 SELECT
@@ -629,7 +624,7 @@ LEFT JOIN (
 ) ast ON ast.id_campania=cp.id_campania
 WHERE cp.borrado_logico=0;
 
--- V5. Atribución Last Touch
+-- V5. Atribucion Last Touch
 DROP VIEW IF EXISTS vw_atribucion_ultimo_toque;
 CREATE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_atribucion_ultimo_toque AS
 WITH ult AS (
@@ -655,9 +650,8 @@ LEFT JOIN creditos cr ON cr.id_cliente=u.id_cliente AND cr.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre, u.id_cliente;
 
 
-/* =======================
-   PERMISOS
-   ======================= */
+
+-- PERMISOS
 GRANT SELECT ON gestion_creditos.vw_cartera_cobranza        TO 'gc_cobranza'@'localhost';
 GRANT SELECT ON gestion_creditos.vw_solicitudes_analista    TO 'gc_analista'@'localhost';
 GRANT SELECT ON gestion_creditos.vw_creditos_avance         TO 'gc_admin'@'localhost';
@@ -667,11 +661,9 @@ GRANT SELECT ON gestion_creditos.vw_atribucion_ultimo_toque TO 'gc_marketing'@'l
 FLUSH PRIVILEGES;
 
 
-/* =======================
-   C) TRANSACCIONES (T1–T2)
-   ======================= */
+-- TRANSACCIONES (T1–T2)
 
--- T1. Refinanciación segura (envuelve reglas + genera nuevas cuotas)
+-- T1. Refinanciacion segura (envuelve reglas + genera nuevas cuotas)
 DROP PROCEDURE IF EXISTS sp_tx_refinanciar_si_mora;
 DELIMITER $$
 CREATE PROCEDURE sp_tx_refinanciar_si_mora(
@@ -684,7 +676,7 @@ BEGIN
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
   BEGIN
     ROLLBACK;
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Transacción revertida por excepción en refinanciación';
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Transaccion revertida por excepcion en refinanciacion';
   END;
 
   START TRANSACTION;
@@ -696,7 +688,7 @@ BEGIN
           AND id_estado IN (@id_cre_act,@id_cre_mor)
     ) THEN
       ROLLBACK;
-      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Crédito no válido para refinanciación';
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Credito no valido para refinanciacion';
     END IF;
 
     CALL sp_refinanciar_credito(p_id_credito, p_nuevo_monto, p_nuevo_plazo, p_nueva_tasa);
@@ -705,7 +697,7 @@ BEGIN
 END$$
 DELIMITER ;
 
--- T2. Registrar contacto de campaña (y consolidar conversión)
+-- T2. Registrar contacto de campaña (y consolidar conversion)
 DROP PROCEDURE IF EXISTS sp_tx_registrar_contacto_campania;
 DELIMITER $$
 CREATE PROCEDURE sp_tx_registrar_contacto_campania(
@@ -731,7 +723,7 @@ BEGIN
     )
     VALUES (p_id_campania, p_id_cliente, p_canal, p_resultado, p_fecha);
 
-    -- 2) Si convirtió y el cliente aún no tiene campaña de ingreso → setearla
+    -- 2) Si convirtio y el cliente aun no tiene campaña de ingreso → setearla
     IF p_resultado = 'Convirtio'
        AND (SELECT id_campania_ingreso
             FROM clientes
