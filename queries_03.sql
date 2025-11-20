@@ -1,5 +1,5 @@
 -- Sistema de Gestion de Creditos y Cobranzas
--- Consultas realizadas de Base de Datos: gestion_creditos
+-- consultas realizadas de Base de Datos: gestion_creditos
 
 
 USE gestion_creditos;
@@ -84,7 +84,7 @@ ORDER BY d1.deuda_vigente DESC, d1.id_cliente;
 SELECT
   cp.id_campania,
   cp.nombre,
-  COUNT(DISTINCT cl.id_cliente)       AS clientes_captados,    -- <- ahora se calcula
+  COUNT(DISTINCT cl.id_cliente)       AS clientes_captados,  
   COUNT(DISTINCT cr.id_credito)       AS creditos_generados
 FROM campanias_promocionales cp
 LEFT JOIN clientes  cl 
@@ -205,7 +205,7 @@ WHERE sc.borrado_logico = 0
 GROUP BY es.codigo
 ORDER BY dias_promedio DESC;
 
--- Q12. Avance proporcional (%) por credito – Top 150 (sin LIMIT)
+-- Q12. Avance proporcional (%) por credito
 WITH avance AS (
   SELECT
     c.id_credito,
@@ -247,20 +247,8 @@ WHERE cl.borrado_logico = 0
 GROUP BY cl.id_cliente, cliente, ec.codigo
 ORDER BY deuda DESC;
 
--- Q14. Eficacia de campañas (ratio creditos / captados)
-SELECT
-  cp.id_campania, cp.nombre,
-  cp.clientes_captados AS captados,
-  COUNT(DISTINCT cr.id_credito) AS creditos,
-  ROUND(100 * COUNT(DISTINCT cr.id_credito) / NULLIF(cp.clientes_captados,0), 2) AS ratio_pct
-FROM campanias_promocionales cp
-LEFT JOIN clientes cl ON cl.id_campania_ingreso = cp.id_campania AND cl.borrado_logico = 0
-LEFT JOIN creditos cr ON cr.id_cliente = cl.id_cliente AND cr.borrado_logico = 0
-WHERE cp.borrado_logico = 0
-GROUP BY cp.id_campania, cp.nombre, cp.clientes_captados
-ORDER BY ratio_pct DESC;
 
--- Q15. Sucursales con mayor monto vencido – TOP 3 (ya sin LIMIT)
+-- Q15. Sucursales con mayor monto vencido
 WITH vencido AS (
   SELECT
     s.id_sucursal, s.nombre AS sucursal,
@@ -347,7 +335,7 @@ WHERE c.borrado_logico = 0
 GROUP BY c.plazo_meses
 ORDER BY c.plazo_meses;
 
--- Q19. Sucursales con mayor volumen otorgado – Top 15 (sin LIMIT)
+-- Q19. Sucursales con mayor volumen otorgado
 WITH tot AS (
   SELECT
     s.id_sucursal, s.nombre,
@@ -395,7 +383,7 @@ FROM campanias_clientes
 GROUP BY canal
 ORDER BY conv_rate_pct DESC, contactos DESC;
 
--- Q22. Funnel por campaña (contactos → clientes unicos → conversiones)
+-- Q22. Funnel por campaña
 SELECT
   cp.id_campania,
   cp.nombre,
@@ -409,7 +397,7 @@ WHERE cp.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre
 ORDER BY conversiones DESC;
 
--- Q23. ROAS y CPA por campaña (ingreso proxy = monto_otorgado atribuido)
+-- Q23. ROAS y CPA por campaña
 SELECT
   cp.id_campania,
   cp.nombre,
@@ -523,7 +511,7 @@ ORDER BY cp.inversion_realizada DESC;
 
 
 
--- VISTAS (SQL SECURITY INVOKER)
+-- Vistas
 
 -- V1. Cartera de cobranza
 DROP VIEW IF EXISTS vw_cartera_cobranza;
@@ -651,7 +639,7 @@ GROUP BY cp.id_campania, cp.nombre, u.id_cliente;
 
 
 
--- Permisos
+-- PERMISOS
 GRANT SELECT ON gestion_creditos.vw_cartera_cobranza        TO 'gc_cobranza'@'localhost';
 GRANT SELECT ON gestion_creditos.vw_solicitudes_analista    TO 'gc_analista'@'localhost';
 GRANT SELECT ON gestion_creditos.vw_creditos_avance         TO 'gc_admin'@'localhost';
@@ -661,7 +649,7 @@ GRANT SELECT ON gestion_creditos.vw_atribucion_ultimo_toque TO 'gc_marketing'@'l
 FLUSH PRIVILEGES;
 
 
--- Transacciones (T1–T2)
+-- TRANSACCIONES (T1–T2)
 
 -- T1. Refinanciacion segura (envuelve reglas + genera nuevas cuotas)
 DROP PROCEDURE IF EXISTS sp_tx_refinanciar_si_mora;
