@@ -983,10 +983,9 @@ END$$
 
 DELIMITER ;
 
--- 5) TRIGGERS (auditoria + blindaje, sin auditoria_tasas / auditoria_eventos)
+-- 5) Triggers
 DELIMITER $$
 
--- Limpieza por rerun (drops)
 DROP TRIGGER IF EXISTS trg_clientes_bi $$
 DROP TRIGGER IF EXISTS trg_clientes_bu $$
 DROP TRIGGER IF EXISTS trg_pago_calcular_demora $$
@@ -1022,7 +1021,7 @@ DROP TRIGGER IF EXISTS trg_generico_bu_eval $$
 DROP TRIGGER IF EXISTS trg_sol_no_aprobar_sin_garante $$
 DROP TRIGGER IF EXISTS trg_hist_no_solape $$
 
--- CLIENTES normaliza & metadatos
+-- Clientes normaliza
 CREATE TRIGGER trg_clientes_bi BEFORE INSERT ON clientes
 FOR EACH ROW
 BEGIN
@@ -1043,7 +1042,7 @@ BEGIN
   END IF;
 END$$
 
--- PAGOS guardia + demora
+-- Pagos guardia + demora
 CREATE TRIGGER trg_pago_calcular_demora
 BEFORE INSERT ON pagos
 FOR EACH ROW
@@ -1135,7 +1134,7 @@ BEGIN
   END IF;
 END$$
 
--- Triggers genericos metadatos (provincias/ciudades)
+-- Triggers
 CREATE TRIGGER trg_generico_bi_prov BEFORE INSERT ON provincias
 FOR EACH ROW BEGIN IF NEW.usuario_alta IS NULL THEN SET NEW.usuario_alta = CURRENT_USER(); END IF; END$$
 CREATE TRIGGER trg_generico_bu_prov BEFORE UPDATE ON provincias
