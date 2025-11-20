@@ -122,7 +122,7 @@ FROM (
 WHERE rk <= 5
 ORDER BY id_sucursal, rk;
 
--- Q6. Top 10 productos por total otorgado (sin LIMIT, con subconsulta)
+-- Q6. Top 10 productos por total otorgado (con subconsulta)
 WITH tot AS (
   SELECT
     pf.id_producto, pf.nombre,
