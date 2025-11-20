@@ -22,9 +22,6 @@ SET @id_sol_rech = (SELECT id FROM estado_solicitud WHERE codigo='Rechazada');
 SET @id_cargo_an = (SELECT id FROM cargo_empleado WHERE codigo='Analista_Credito');
 SET @id_met_trf  = (SELECT id FROM metodo_pago    WHERE codigo='Transferencia');
 
-
--- CONSULTAS (1–21)
-
 -- Q1. Cartera por tipo de producto y estado del credito
 SELECT
   tp.codigo AS tipo_producto,
