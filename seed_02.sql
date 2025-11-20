@@ -1,817 +1,1873 @@
--- ===========================================
--- seed_02.sql  |  Datos demo masivos (MySQL 8)
--- Esquema: gestion_creditos  (con tablas de dominio)
--- Genera >= 60 filas por tabla (muchas >> 60)
--- Listas de dominio: <60 por diseño (justificado)
--- Compatible con esquema_01.sql provisto
--- ===========================================
+-- Sistema de Gestion de Creditos y Cobranzas
+-- Carga de datos de Base de Datos: gestion_creditos
 
 USE gestion_creditos;
-SET sql_safe_updates = 0;
 
--- -------------------------------------------------
--- Limpieza controlada (solo datos; mantiene objetos)
--- -------------------------------------------------
-SET FOREIGN_KEY_CHECKS = 0;
+-- estado_sucursal
+INSERT INTO estado_sucursal (codigo, nombre) VALUES
+  ('Activa',         'Sucursal operativa con atencion al publico'),
+  ('En_Remodelacion','Sucursal temporalmente cerrada por obras'),
+  ('Cerrada',        'Sucursal cerrada de forma definitiva'),
+  ('Solo_Turnos',    'Sucursal operativa unicamente con atencion programada'),
+  ('Solo_Backoffice','Sucursal sin atencion al publico, solo tareas administrativas'),
+  ('En_Apertura',    'Sucursal en etapa de apertura y configuracion inicial');
 
--- tablas dependientes (orden FK)
-DELETE FROM campanias_clientes;
-DELETE FROM campanias_productos;
-DELETE FROM evaluaciones_seguimiento;
-DELETE FROM penalizaciones;
-DELETE FROM pagos;
-DELETE FROM cuotas;
-DELETE FROM creditos;
-DELETE FROM solicitudes_garantes;
-DELETE FROM solicitudes_credito;
-DELETE FROM garantes;
-DELETE FROM historico_tasas;
-DELETE FROM productos_financieros;
-DELETE FROM clientes;
-DELETE FROM campanias_promocionales;
-DELETE FROM empleados;
-DELETE FROM sucursales;
+-- cargo_empleado
+INSERT INTO cargo_empleado (codigo, nombre) VALUES
+  ('Gerente_Sucursal',      'Gerente de Sucursal'),
+  ('Subgerente_Sucursal',   'Subgerente de Sucursal'),
+  ('Oficial_Credito',       'Oficial de Creditos'),
+  ('Analista_Credito',      'Analista de Riesgo Crediticio'),
+  ('Cajero_Principal',      'Cajero Principal'),
+  ('Asesor_Comercial',      'Asesor Comercial'),
+  ('Responsable_Cobranzas', 'Responsable de Cobranzas'),
+  ('Auxiliar_Administrativo','Auxiliar Administrativo'),
+  ('Supervisor_Backoffice', 'Supervisor de Backoffice'),
+  ('Data_Analyst',          'Analista de Datos de Negocio');
 
--- geo maestro
-DELETE FROM ciudades;
-DELETE FROM provincias;
+-- estado_empleado
+INSERT INTO estado_empleado (codigo, nombre) VALUES
+  ('Activo',           'Empleado en actividad normal'),
+  ('En_Licencia',      'Empleado con licencia temporal'),
+  ('Suspendido',       'Empleado suspendido por medidas disciplinarias'),
+  ('Rescindido',       'Empleado con contrato rescindido'),
+  ('Jubilado',         'Empleado jubilado'),
+  ('En_Induccion',     'Empleado en proceso de induccion inicial'),
+  ('En_Entrenamiento', 'Empleado en capacitacion o entrenamiento'),
+  ('Reingresado',      'Empleado reingresado a la organizacion');
 
--- dominios (catálogos finitos)
-DELETE FROM estado_sucursal;
-DELETE FROM cargo_empleado;
-DELETE FROM estado_empleado;
-DELETE FROM estado_cliente;
-DELETE FROM situacion_laboral;
-DELETE FROM tipo_producto;
-DELETE FROM estado_producto;
-DELETE FROM estado_campania;
-DELETE FROM estado_solicitud;
-DELETE FROM estado_credito;
-DELETE FROM estado_cuota;
-DELETE FROM metodo_pago;
-DELETE FROM estado_penalizacion;
-DELETE FROM comp_pago;
+-- estado_cliente
+INSERT INTO estado_cliente (codigo, nombre) VALUES
+  ('Activo',         'Cliente activo con productos vigentes'),
+  ('Moroso',         'Cliente con deudas vencidas y pendientes de pago'),
+  ('Potencial',      'Cliente potencial sin productos contratados'),
+  ('En_Gestion',     'Cliente en gestion de cobranza preventiva'),
+  ('En_Litigio',     'Cliente con cuenta judicializada'),
+  ('Inactivo',       'Cliente sin movimientos recientes'),
+  ('Baja_Solicitada','Cliente con baja solicitada en proceso'),
+  ('Fraude_Sospecha','Cliente marcado por sospecha de fraude');
 
-SET FOREIGN_KEY_CHECKS = 1;
+-- situacion_laboral
+INSERT INTO situacion_laboral (codigo, nombre) VALUES
+  ('Rel_Dep_Planta',   'Empleado en relacion de dependencia planta permanente'),
+  ('Rel_Dep_Termino',  'Empleado en relacion de dependencia a plazo fijo'),
+  ('Monotributista',   'Trabajador independiente monotributista'),
+  ('Autonomo',         'Trabajador autonomo registrado'),
+  ('Informal',         'Trabajador en situacion laboral informal'),
+  ('Desocupado',       'Persona actualmente desocupada'),
+  ('Amas_de_Casa',     'Tareas del hogar sin relacion laboral formal'),
+  ('Jubilado',         'Persona jubilada con haberes previsionales'),
+  ('Estudiante',       'Persona dedicada principalmente al estudio'),
+  ('Emprendedor',      'Persona a cargo de un emprendimiento propio');
 
--- ------------------------------------------------------------------
--- 0) Helper: Secuencia 1..5000 SIN recursividad
--- ------------------------------------------------------------------
-DROP TABLE IF EXISTS helper_seq;
-CREATE TABLE helper_seq (n INT PRIMARY KEY);
-INSERT INTO helper_seq (n)
-SELECT num
-FROM (
-  SELECT (a.N + b.N*10 + c.N*100 + d.N*1000) + 1 AS num
-  FROM (SELECT 0 N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
-        UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
-  CROSS JOIN (SELECT 0 N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
-              UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b
-  CROSS JOIN (SELECT 0 N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
-              UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) c
-  CROSS JOIN (SELECT 0 N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
-              UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) d
-) t
-WHERE t.num <= 5000;
+-- tipo_producto
+INSERT INTO tipo_producto (codigo, nombre) VALUES
+  ('Prestamo_Personal',     'Prestamo personal'),
+  ('Prestamo_Hipotecario',  'Prestamo hipotecario para vivienda'),
+  ('Prestamo_Prendario',    'Prestamo prendario para vehiculo'),
+  ('Tarjeta_Credito',       'Linea de tarjeta de credito'),
+  ('Cuenta_Corriente',      'Linea de credito en cuenta corriente'),
+  ('Desc_Haberes',          'Prestamo con descuento de haberes'),
+  ('Microcredito',          'Microcredito para emprendimientos pequeños'),
+  ('Empresarial_Pyme',      'Linea de credito para PYMEs'),
+  ('Consumo_Rotativo',      'Linea de consumo con saldo rotativo'),
+  ('Refinanciacion',        'Producto de refinanciacion de deudas');
 
--- ------------------------------------------------------------------
--- A) DOMINIOS (listas finitas; <60 por diseño)  [Justificado]
--- ------------------------------------------------------------------
-INSERT INTO estado_sucursal (codigo,nombre) VALUES
- ('Activa','Activa'),('Inactiva','Inactiva');
 
-INSERT INTO cargo_empleado (codigo,nombre) VALUES
- ('Atencion_Cliente','Atención al Cliente'),
- ('Analista_Credito','Analista de Crédito'),
- ('Gerente','Gerente'),
- ('Cobranza','Gestor de Cobranza'),
- ('Administrador','Administrador');
+-- estado_producto
+INSERT INTO estado_producto (codigo, nombre) VALUES
+  ('Activo',           'Producto financiero activo y comercializable'),
+  ('En_Desarrollo',    'Producto en etapa de diseño o prueba interna'),
+  ('Suspendido',       'Producto suspendido temporalmente'),
+  ('Discontinuado',    'Producto discontinuado sin nuevas altas'),
+  ('Solo_Renovacion',  'Producto habilitado solo para renovaciones'),
+  ('Piloto',           'Producto en prueba piloto con clientes seleccionados'),
+  ('En_Revision_Riesgo','Producto bajo revision por area de riesgo'),
+  ('Archivado',        'Producto historico sin uso operativo');
 
-INSERT INTO estado_empleado (codigo,nombre) VALUES
- ('Activo','Activo'),('Inactivo','Inactivo');
 
-INSERT INTO estado_cliente (codigo,nombre) VALUES
- ('Activo','Activo'),('Inactivo','Inactivo'),('Moroso','Moroso'),('Bloqueado','Bloqueado');
+-- estado_campania
+INSERT INTO estado_campania (codigo, nombre) VALUES
+  ('Planificada',    'Campaña definida pero aun no iniciada'),
+  ('En_Curso',       'Campaña actualmente activa'),
+  ('Pausada',        'Campaña pausada temporalmente'),
+  ('Finalizada',     'Campaña finalizada segun planificacion'),
+  ('Cancelada',      'Campaña cancelada antes de su finalizacion'),
+  ('En_Analisis',    'Campaña en analisis de resultados'),
+  ('En_Ajuste',      'Campaña en proceso de ajuste de estrategia'),
+  ('Activa',      'Campaña activa'),
+  ('Archivada',      'Campaña historica sin actividad vigente');
 
-INSERT INTO situacion_laboral (codigo,nombre) VALUES
- ('Empleado','Empleado'),('Autonomo','Autónomo'),('Empresario','Empresario'),('Jubilado','Jubilado'),('Desempleado','Desempleado');
 
-INSERT INTO tipo_producto (codigo,nombre) VALUES
- ('Personal','Crédito Personal'),('Hipotecario','Hipotecario'),
- ('Empresarial','Empresarial'),('Leasing','Leasing'),
- ('Tarjeta_Corporativa','Tarjeta Corporativa');
+-- estado_solicitud
+INSERT INTO estado_solicitud (codigo, nombre) VALUES
+  ('Pendiente',      'Solicitud registrada pendiente de analisis'),
+  ('En_Revision',    'Solicitud en revision por el area de credito'),
+  ('Aprobada',       'Solicitud aprobada para otorgamiento de credito'),
+  ('Rechazada',      'Solicitud rechazada por politicas de credito'),
+  ('Cancelada_Cliente', 'Solicitud cancelada a pedido del cliente'),
+  ('Cancelada_Banco',   'Solicitud cancelada por decision de la entidad'),
+  ('Incompleta',     'Solicitud con documentacion incompleta'),
+  ('En_Reprocesamiento','Solicitud en reproceso por correccion de datos');
 
-INSERT INTO estado_producto (codigo,nombre) VALUES
- ('Activo','Activo'),('Inactivo','Inactivo');
 
-INSERT INTO estado_campania (codigo,nombre) VALUES
- ('Activa','Activa'),('Finalizada','Finalizada'),('Cancelada','Cancelada');
+-- estado_credito
+INSERT INTO estado_credito (codigo, nombre) VALUES
+  ('Activo',         'Credito vigente en curso de pago'),
+  ('En_Mora',        'Credito con cuotas vencidas e impagas'),
+  ('Pagado',         'Credito cancelado en su totalidad'),
+  ('Refinanciado',   'Credito refinanciado en una nueva operacion'),
+  ('Precancelado',   'Credito cancelado de forma anticipada'),
+  ('Castigado',      'Credito castigado por incobrabilidad'),
+  ('Judicializado',  'Credito derivado a gestion judicial'),
+  ('En_Revision',    'Credito en revision por area de riesgo');
 
-INSERT INTO estado_solicitud (codigo,nombre) VALUES
- ('Pendiente','Pendiente'),('En_Revision','En Revisión'),
- ('Aprobada','Aprobada'),('Rechazada','Rechazada');
 
-INSERT INTO estado_credito (codigo,nombre) VALUES
- ('Activo','Activo'),('Pagado','Pagado'),('Refinanciado','Refinanciado'),
- ('En_Mora','En Mora'),('Cancelado','Cancelado');
+-- estado_cuota
+INSERT INTO estado_cuota (codigo, nombre) VALUES
+  ('Pendiente',        'Cuota pendiente de pago'),
+  ('Pagada',           'Cuota pagada en termino'),
+  ('Vencida',          'Cuota vencida sin cancelar'),
+  ('Pagada_Con_Mora',  'Cuota pagada con mora'),
+  ('En_Gestion',       'Cuota en gestion de cobranza'),
+  ('En_Revision',      'Cuota en revision administrativa'),
+  ('Condonada',        'Cuota condonada por acuerdo especial'),
+  ('Reestructurada',   'Cuota modificada por reestructuracion del credito');
 
-INSERT INTO estado_cuota (codigo,nombre) VALUES
- ('Pendiente','Pendiente'),('Pagada','Pagada'),
- ('Vencida','Vencida'),('Pagada_Con_Mora','Pagada con Mora');
 
-INSERT INTO metodo_pago (codigo,nombre) VALUES
- ('Efectivo','Efectivo'),('Transferencia','Transferencia'),
- ('Debito_Automatico','Débito Automático'),('Tarjeta','Tarjeta'),
- ('Cheque','Cheque');
+-- metodo_pago
+INSERT INTO metodo_pago (codigo, nombre) VALUES
+  ('Efectivo',        'Pago en efectivo en sucursal'),
+  ('Transferencia',   'Transferencia bancaria o CBU'),
+  ('Debito_Automatico','Debito automatico en cuenta bancaria'),
+  ('Tarjeta_Credito', 'Pago con tarjeta de credito'),
+  ('Tarjeta_Debito',  'Pago con tarjeta de debito'),
+  ('Billetera_Virtual','Pago mediante billetera virtual'),
+  ('Caja_Recaudadora','Pago en caja recaudadora externa'),
+  ('Retencion_Haberes','Retencion directa sobre haberes'),
+  ('Link_Pago',       'Pago mediante link de pago enviado al cliente'),
+  ('Deposito_Cuenta', 'Deposito en cuenta de la entidad');
 
-INSERT INTO estado_penalizacion (codigo,nombre) VALUES
- ('Pendiente','Pendiente'),('Pagada','Pagada');
 
-INSERT INTO comp_pago (codigo,nombre) VALUES
- ('Excelente','Excelente'),('Bueno','Bueno'),('Regular','Regular'),
- ('Malo','Malo'),('Muy_Malo','Muy Malo');
 
--- IDs de dominio (para referencias)
-SET @id_suc_act  = (SELECT id FROM estado_sucursal  WHERE codigo='Activa');
-SET @id_suc_inact= (SELECT id FROM estado_sucursal  WHERE codigo='Inactiva');
+-- estado_penalizacion
+INSERT INTO estado_penalizacion (codigo, nombre) VALUES
+  ('Pendiente',      'Penalizacion registrada pendiente de cobro'),
+  ('Pagada',         'Penalizacion cancelada por el cliente'),
+  ('Condonada',      'Penalizacion condonada por acuerdo especial'),
+  ('En_Revision',    'Penalizacion en revision por area de riesgo'),
+  ('Impugnada',      'Penalizacion impugnada por el cliente'),
+  ('Devuelta',       'Penalizacion revertida por error operativo');
 
-SET @id_emp_act  = (SELECT id FROM estado_empleado  WHERE codigo='Activo');
-SET @id_emp_inact= (SELECT id FROM estado_empleado  WHERE codigo='Inactivo');
 
-SET @id_cli_act  = (SELECT id FROM estado_cliente   WHERE codigo='Activo');
-SET @id_cli_mor  = (SELECT id FROM estado_cliente   WHERE codigo='Moroso');
-SET @id_cli_bloq = (SELECT id FROM estado_cliente   WHERE codigo='Bloqueado');
+-- comp_pago
+INSERT INTO comp_pago (codigo, nombre) VALUES
+  ('Excelente',        'Cumple siempre en termino sin atrasos'),
+  ('Muy_Bueno',        'Rara vez presenta pequeños atrasos'),
+  ('Bueno',            'Presenta algunos atrasos menores ocasionales'),
+  ('Irregular',        'Registra atrasos frecuentes en sus pagos'),
+  ('Moroso_Cronico',   'Acumula periodos prolongados de mora'),
+  ('En_Recuperacion',  'Mejorando su comportamiento de pago reciente'),
+  ('Critico',          'Alto riesgo por incumplimiento reiterado'),
+  ('Sin_Historial',    'Sin historial de pagos disponible');
 
-SET @id_sol_pend = (SELECT id FROM estado_solicitud WHERE codigo='Pendiente');
-SET @id_sol_enrev= (SELECT id FROM estado_solicitud WHERE codigo='En_Revision');
-SET @id_sol_aprb = (SELECT id FROM estado_solicitud WHERE codigo='Aprobada');
-SET @id_sol_rech = (SELECT id FROM estado_solicitud WHERE codigo='Rechazada');
+SET @id_est_activa = (
+  SELECT id FROM estado_campania WHERE codigo = 'Activa'
+);
 
-SET @id_cre_act  = (SELECT id FROM estado_credito   WHERE codigo='Activo');
-SET @id_cre_pag  = (SELECT id FROM estado_credito   WHERE codigo='Pagado');
-SET @id_cre_mor  = (SELECT id FROM estado_credito   WHERE codigo='En_Mora');
 
-SET @id_cuo_pend = (SELECT id FROM estado_cuota     WHERE codigo='Pendiente');
-SET @id_cuo_pag  = (SELECT id FROM estado_cuota     WHERE codigo='Pagada');
-SET @id_cuo_venc = (SELECT id FROM estado_cuota     WHERE codigo='Vencida');
-SET @id_cuo_pagmor = (SELECT id FROM estado_cuota   WHERE codigo='Pagada_Con_Mora');
+-- campanias_promocionales
+INSERT INTO campanias_promocionales (
+  nombre,
+  descripcion,
+  tasa_promocional,
+  fecha_inicio,
+  fecha_fin,
+  descuento_porcentaje,
+  id_estado,
+  presupuesto,
+  inversion_realizada,
+  clientes_captados
+) VALUES
+  ( 'Campaña Bienvenida 2023',
+    'Campaña de bienvenida para nuevos clientes de banca minorista.',
+    24.000, '2023-01-01', '2023-03-31',
+    10.000, @id_est_activa,
+    500000.00, 320000.00, 0),
+  ( 'Campaña Consumo Verano 2023',
+    'Promocion de creditos personales para consumo en temporada de verano.',
+    25.000, '2023-12-01', '2024-02-28',
+    12.000, @id_est_activa,
+    600000.00, 350000.00, 0),
+  ( 'Campaña Hogar Otoño 2023',
+    'Creditos para refaccion y equipamiento del hogar.',
+    23.500, '2023-04-01', '2023-06-30',
+    8.000, @id_est_activa,
+    450000.00, 280000.00, 0),
+  ( 'Campaña PyME Regional 2023',
+    'Linea especial para capital de trabajo de PYMEs regionales.',
+    22.000, '2023-05-01', '2023-09-30',
+    7.000, @id_est_activa,
+    800000.00, 500000.00, 0),
+  ( 'Campaña Vehiculos 2023',
+    'Promocion de creditos prendarios para compra de vehiculos.',
+    26.000, '2023-03-01', '2023-08-31',
+    9.500, @id_est_activa,
+    700000.00, 420000.00, 0),
+  ( 'Campaña Educacion 2023',
+    'Linea de creditos para estudios terciarios y universitarios.',
+    21.500, '2023-02-01', '2023-12-31',
+    6.000, @id_est_activa,
+    300000.00, 180000.00, 0),
+  ( 'Campaña Viajes 2024',
+    'Financiacion de paquetes turisticos y viajes familiares.',
+    27.000, '2024-01-01', '2024-04-30',
+    11.000, @id_est_activa,
+    550000.00, 330000.00, 0),
+  ( 'Campaña Consumo Invierno 2024',
+    'Creditos personales para consumo general en invierno.',
+    25.500, '2024-05-01', '2024-08-31',
+    9.000, @id_est_activa,
+    520000.00, 310000.00, 0),
+  ( 'Campaña Digital 2024',
+    'Campaña orientada a clientes que operan por canales digitales.',
+    23.000, '2024-03-01', '2024-09-30',
+    7.500, @id_est_activa,
+    400000.00, 250000.00, 0),
+  ( 'Campaña Salario 2024',
+    'Beneficios para clientes que acreditan haberes en la entidad.',
+    22.500, '2024-01-01', '2024-12-31',
+    8.500, @id_est_activa,
+    650000.00, 390000.00, 0),
+  ( 'Campaña Bienvenida 2025',
+    'Nueva ola de captacion de clientes jovenes y digitales.',
+    24.500, '2025-01-01', '2025-06-30',
+    10.000, @id_est_activa,
+    700000.00, 410000.00, 0),
+  ( 'Campaña Premium 2025',
+    'Campaña para clientes de altos ingresos con productos premium.',
+    28.000, '2025-03-01', '2025-09-30',
+    12.500, @id_est_activa,
+    900000.00, 550000.00, 0);
 
-SET @id_met_trf  = (SELECT id FROM metodo_pago      WHERE codigo='Transferencia');
-SET @id_met_efv  = (SELECT id FROM metodo_pago      WHERE codigo='Efectivo');
-SET @id_met_deb  = (SELECT id FROM metodo_pago      WHERE codigo='Debito_Automatico');
 
+
+-- provincias
+INSERT INTO provincias (nombre) VALUES
+  ('Buenos Aires'),
+  ('Ciudad Autonoma de Buenos Aires'),
+  ('Catamarca'),
+  ('Chaco'),
+  ('Chubut'),
+  ('Cordoba'),
+  ('Corrientes'),
+  ('Entre Rios'),
+  ('Formosa'),
+  ('Jujuy'),
+  ('La Pampa'),
+  ('La Rioja'),
+  ('Mendoza'),
+  ('Misiones'),
+  ('Neuquen'),
+  ('Rio Negro'),
+  ('Salta'),
+  ('San Juan'),
+  ('San Luis'),
+  ('Santa Cruz'),
+  ('Santa Fe'),
+  ('Santiago del Estero'),
+  ('Tierra del Fuego'),
+  ('Tucuman');
+
+
+
+-- ciudades
+INSERT INTO ciudades (id_provincia, nombre) VALUES
+  (1, 'La Plata'),
+  (1, 'Mar del Plata'),
+  (1, 'Bahia Blanca'),
+  (1, 'Tandil'),
+  (1, 'San Nicolas de los Arroyos'),
+  (2, 'Palermo'),
+  (2, 'Balvanera'),
+  (2, 'Flores'),
+  (2, 'Villa Urquiza'),
+  (2, 'Retiro'),
+  (6, 'Cordoba Capital'),
+  (6, 'Villa Carlos Paz'),
+  (6, 'Rio Cuarto'),
+  (6, 'Villa Maria'),
+  (7, 'Corrientes Capital'),
+  (7, 'Goya'),
+  (7, 'Paso de los Libres'),
+  (14, 'Posadas'),
+  (14, 'Obera'),
+  (14, 'Eldorado'),
+  (14, 'Puerto Iguazu'),
+  (21, 'Rosario'),
+  (21, 'Santa Fe Capital'),
+  (21, 'Rafaela'),
+  (21, 'Venado Tuerto'),
+  (4, 'Resistencia'),
+  (4, 'Presidencia Roque Saenz Peña'),
+  (9, 'Formosa Capital'),
+  (13, 'Mendoza Capital'),
+  (13, 'San Rafael'),
+  (17, 'Salta Capital'),
+  (17, 'Tartagal'),
+  (24, 'San Miguel de Tucuman'),
+  (24, 'Tafi Viejo'),
+  (20, 'Rio Gallegos'),
+  (23, 'Ushuaia');
+
+
+-- sucursales (60 filas)
+INSERT INTO sucursales
+  (nombre, id_provincia, id_ciudad, ciudad, direccion, telefono, email, fecha_apertura, id_estado)
+VALUES
+  ('Sucursal Posadas Centro',        14, 18, 'Posadas', 'Av. Mitre 1234',                '0376-4100001', 'posadas.centro@bancoregional.com',   '2012-03-01', 1),
+  ('Sucursal Posadas Villa Cabello', 14, 18, 'Posadas', 'Av. Lopez y Planes 2450',       '0376-4100002', 'posadas.villacabello@bancoregional.com','2015-07-15', 1),
+  ('Sucursal Posadas Itaembe',       14, 18, 'Posadas', 'Av. 147 Nº 3500',               '0376-4100003', 'posadas.itaembe@bancoregional.com',   '2018-11-10', 4),
+  ('Sucursal Obera Centro',          14, 19, 'Obera',  'Av. Libertad 560',               '03755-420001', 'obera.centro@bancoregional.com',      '2013-04-20', 1),
+  ('Sucursal Obera Norte',           14, 19, 'Obera',  'Ruta 14 Km 8.5',                 '03755-420002', 'obera.norte@bancoregional.com',       '2019-09-05', 6),
+  ('Sucursal Eldorado Km9',          14, 20, 'Eldorado', 'Av. San Martin Km 9',         '03751-430001', 'eldorado.km9@bancoregional.com',      '2010-05-12', 1),
+  ('Sucursal Eldorado Oeste',        14, 20, 'Eldorado', 'B° Pinares Manz. 2 Casa 4',    '03751-430002', 'eldorado.oeste@bancoregional.com',    '2016-02-18', 2),
+  ('Sucursal Iguazu Centro',         14, 21, 'Puerto Iguazu', 'Av. Brasil 890',         '03757-440001', 'iguazu.centro@bancoregional.com',     '2011-08-01', 1),
+  ('Sucursal Iguazu Frontera',       14, 21, 'Puerto Iguazu', 'Acceso al Puente Tancredo Neves','03757-440002','iguazu.frontera@bancoregional.com','2017-01-25', 4),
+  ('Sucursal Rosario Centro',        21, 22, 'Rosario', 'Cordoba 1450',                  '0341-4500001', 'rosario.centro@bancoregional.com',    '2008-03-10', 1),
+  ('Sucursal Rosario Noroeste',      21, 22, 'Rosario', 'Av. Eva Peron 7200',            '0341-4500002', 'rosario.noroeste@bancoregional.com',  '2014-06-18', 1),
+  ('Sucursal Rosario Sur',           21, 22, 'Rosario', 'San Martin 5100',               '0341-4500003', 'rosario.sur@bancoregional.com',       '2019-10-03', 2),
+  ('Sucursal Santa Fe Centro',       21, 23, 'Santa Fe Capital', 'San Martin 2100',      '0342-4600001', 'santafe.centro@bancoregional.com',   '2009-09-01', 1),
+  ('Sucursal Santa Fe Norte',        21, 23, 'Santa Fe Capital', 'Av. Gorriti 3900',     '0342-4600002', 'santafe.norte@bancoregional.com',    '2015-12-15', 4),
+  ('Sucursal Rafaela Centro',        21, 24, 'Rafaela', 'Bv. Santa Fe 950',              '03492-470001', 'rafaela.centro@bancoregional.com',    '2011-05-05', 1),
+  ('Sucursal Venado Tuerto Centro',  21, 25, 'Venado Tuerto', 'Belgrano 780',           '03462-480001', 'venado.centro@bancoregional.com',     '2013-03-22', 1),
+  ('Sucursal La Plata Casco Urbano', 1, 1, 'La Plata', 'Calle 7 Nº 890',                '0221-4101001', 'laplata.casco@bancoregional.com',     '2007-04-01', 1),
+  ('Sucursal La Plata Gonnet',       1, 1, 'La Plata', 'Camino Centenario 2330',        '0221-4101002', 'laplata.gonnet@bancoregional.com',    '2016-07-11', 2),
+  ('Sucursal Mar del Plata Centro',  1, 2, 'Mar del Plata', 'Av. Luro 1800',            '0223-4201001', 'mdp.centro@bancoregional.com',        '2005-11-10', 1),
+  ('Sucursal Mar del Plata Güemes',  1, 2, 'Mar del Plata', 'Olavarria 3100',           '0223-4201002', 'mdp.guemes@bancoregional.com',        '2012-02-29', 1),
+  ('Sucursal Bahia Blanca Centro',   1, 3, 'Bahia Blanca', 'Av. Alem 600',              '0291-4301001', 'bahia.centro@bancoregional.com',      '2006-08-18', 1),
+  ('Sucursal Tandil Centro',         1, 4, 'Tandil', '9 de Julio 550',                  '0249-4401001', 'tandil.centro@bancoregional.com',     '2010-09-09', 1),
+  ('Sucursal San Nicolas Centro',    1, 5, 'San Nicolas de los Arroyos', 'Mitre 320',   '0336-4501001', 'snicolas.centro@bancoregional.com',  '2011-01-17', 4),
+  ('Sucursal Palermo Soho',          2, 6, 'Palermo', 'Honduras 4800',                  '011-4700001',  'palermo.soho@bancoregional.com',      '2013-06-01', 1),
+  ('Sucursal Palermo Hollywood',     2, 6, 'Palermo', 'Costa Rica 5600',                '011-4700002',  'palermo.hollywood@bancoregional.com', '2018-03-14', 1),
+  ('Sucursal Once Balvanera',        2, 7, 'Balvanera', 'Av. Pueyrredon 300',           '011-4800001',  'balvanera.once@bancoregional.com',    '2009-10-10', 1),
+  ('Sucursal Flores Plaza',          2, 8, 'Flores', 'Av. Rivadavia 6800',              '011-4900001',  'flores.plaza@bancoregional.com',      '2014-04-04', 2),
+  ('Sucursal Villa Urquiza Plaza',   2, 9, 'Villa Urquiza', 'Av. Triunvirato 4900',     '011-5000001',  'urquiza.plaza@bancoregional.com',     '2015-01-26', 1),
+  ('Sucursal Retiro Terminal',       2, 10,'Retiro', 'Av. Ramos Mejia 1350',            '011-5100001',  'retiro.terminal@bancoregional.com',   '2004-12-01', 3),
+  ('Sucursal Cordoba Centro',        6, 11,'Cordoba Capital', '25 de Mayo 150',         '0351-4102001', 'cordoba.centro@bancoregional.com',    '2008-02-20', 1),
+  ('Sucursal Cordoba Nueva Cordoba', 6, 11,'Cordoba Capital', 'Bv. Illia 300',          '0351-4102002', 'cordoba.nuevacba@bancoregional.com',  '2016-09-30', 1),
+  ('Sucursal Carlos Paz Centro',     6, 12,'Villa Carlos Paz', 'Av. Libertad 50',       '03541-420001', 'carlospaz.centro@bancoregional.com',  '2010-10-01', 1),
+  ('Sucursal Rio Cuarto Centro',     6, 13,'Rio Cuarto', 'Colon 750',                   '0358-4302001', 'riocuarto.centro@bancoregional.com',  '2009-07-07', 1),
+
+  ('Sucursal Villa Maria Centro',    6, 14,'Villa Maria', 'San Martin 420',             '0353-4402001', 'villamaria.centro@bancoregional.com', '2012-01-19', 4),
+  ('Sucursal Corrientes Centro',     7, 15,'Corrientes Capital', 'Junin 950',           '0379-4303001', 'corrientes.centro@bancoregional.com', '2007-06-15', 1),
+  ('Sucursal Corrientes Costanera',  7, 15,'Corrientes Capital', 'Costanera Sur 2100',  '0379-4303002', 'corrientes.costanera@bancoregional.com','2018-08-08', 6),
+  ('Sucursal Goya Centro',           7, 16,'Goya', 'España 430',                        '03777-4403001','goya.centro@bancoregional.com',       '2011-11-11', 1),
+  ('Sucursal Paso de los Libres',    7, 17,'Paso de los Libres', 'Madariaga 620',       '03772-4503001','libres.centro@bancoregional.com',     '2013-05-03', 1),
+  ('Sucursal Resistencia Centro',    4, 26,'Resistencia', 'Av. 9 de Julio 450',        '0362-4404001', 'resistencia.centro@bancoregional.com','2006-03-03', 1),
+  ('Sucursal Saenz Peña Centro',     4, 27,'Presidencia Roque Saenz Peña','Urquiza 850','0364-4504001','saenzpena.centro@bancoregional.com', '2010-02-02', 1),
+  ('Sucursal Formosa Centro',        9, 28,'Formosa Capital', 'San Martin 1150',        '0370-4305001', 'formosa.centro@bancoregional.com',    '2012-12-12', 1),
+  ('Sucursal Mendoza Centro',        13,29,'Mendoza Capital', 'San Martin 980',        '0261-4306001', 'mendoza.centro@bancoregional.com',    '2005-09-09', 1),
+  ('Sucursal San Rafael Centro',     13,30,'San Rafael', 'Av. Hipolito Yrigoyen 450',   '0260-4406001', 'sanrafael.centro@bancoregional.com',  '2013-07-21', 1),
+  ('Sucursal Salta Centro',          17,31,'Salta Capital', 'Caseros 600',             '0387-4307001', 'salta.centro@bancoregional.com',      '2008-01-15', 1),
+  ('Sucursal Tartagal Centro',       17,32,'Tartagal', 'San Martin 320',               '03875-4407001','tartagal.centro@bancoregional.com',   '2014-10-28', 1),
+  ('Sucursal Tucuman Centro',        24,33,'San Miguel de Tucuman', 'Muñecas 650',     '0381-4308001', 'tucuman.centro@bancoregional.com',    '2009-06-06', 1),
+  ('Sucursal Tafi Viejo Centro',     24,34,'Tafi Viejo', 'Av. Alem 300',               '0381-4308002', 'tafi.centro@bancoregional.com',       '2016-04-04', 4),
+  ('Sucursal Rio Gallegos Centro',   20,35,'Rio Gallegos', 'Roca 250',                 '02966-4309001','riogallegos.centro@bancoregional.com','2011-03-29', 1),
+  ('Sucursal Ushuaia Centro',        23,36,'Ushuaia', 'San Martin 780',                '02901-4310001','ushuaia.centro@bancoregional.com',    '2015-05-05', 1);
+
+-- empleados
+INSERT INTO empleados
+  (id_sucursal, nombre, apellido, dni, id_cargo, email, telefono, fecha_ingreso, salario, id_estado)
+VALUES
+  (1, 'Lucia', 'Gomez', '30000001', 1, 'lucia.gomez@bancoregional.com', '011-6000001', '2011-02-02', 121500.00, 1),
+  (2, 'Martina', 'Lopez', '30000002', 2, 'martina.lopez@bancoregional.com', '011-6000002', '2012-03-03', 123000.00, 2),
+  (3, 'Sofia', 'Rodriguez', '30000003', 3, 'sofia.rodriguez@bancoregional.com', '011-6000003', '2013-04-04', 124500.00, 3),
+  (4, 'Valentina', 'Fernandez', '30000004', 4, 'valentina.fernandez@bancoregional.com', '011-6000004', '2014-05-05', 126000.00, 4),
+  (5, 'Camila', 'Martinez', '30000005', 5, 'camila.martinez@bancoregional.com', '011-6000005', '2015-06-06', 127500.00, 5),
+  (6, 'Agustina', 'Gonzalez', '30000006', 6, 'agustina.gonzalez@bancoregional.com', '011-6000006', '2016-07-07', 129000.00, 6),
+  (7, 'Florencia', 'Perez', '30000007', 7, 'florencia.perez@bancoregional.com', '011-6000007', '2017-08-08', 130500.00, 7),
+  (8, 'Julieta', 'Sanchez', '30000008', 8, 'julieta.sanchez@bancoregional.com', '011-6000008', '2018-09-09', 132000.00, 8),
+  (9, 'Micaela', 'Romero', '30000009', 9, 'micaela.romero@bancoregional.com', '011-6000009', '2019-10-10', 133500.00, 1),
+  (10, 'Carla', 'Alvarez', '30000010', 10, 'carla.alvarez@bancoregional.com', '011-6000010', '2010-11-11', 135000.00, 2),
+  (11, 'Juan', 'Torres', '30000011', 1, 'juan.torres@bancoregional.com', '011-6000011', '2011-12-12', 136500.00, 3),
+  (12, 'Martin', 'Ruiz', '30000012', 2, 'martin.ruiz@bancoregional.com', '011-6000012', '2012-01-13', 138000.00, 4),
+  (13, 'Santiago', 'Flores', '30000013', 3, 'santiago.flores@bancoregional.com', '011-6000013', '2013-02-14', 139500.00, 5),
+  (14, 'Carlos', 'Acosta', '30000014', 4, 'carlos.acosta@bancoregional.com', '011-6000014', '2014-03-15', 141000.00, 6),
+  (15, 'Diego', 'Herrera', '30000015', 5, 'diego.herrera@bancoregional.com', '011-6000015', '2015-04-16', 142500.00, 7),
+  (16, 'Pablo', 'Medina', '30000016', 6, 'pablo.medina@bancoregional.com', '011-6000016', '2016-05-17', 144000.00, 8),
+  (17, 'Lucas', 'Ponce', '30000017', 7, 'lucas.ponce@bancoregional.com', '011-6000017', '2017-06-18', 145500.00, 1),
+  (18, 'Nicolas', 'Molina', '30000018', 8, 'nicolas.molina@bancoregional.com', '011-6000018', '2018-07-19', 147000.00, 2),
+  (19, 'Federico', 'Silva', '30000019', 9, 'federico.silva@bancoregional.com', '011-6000019', '2019-08-20', 148500.00, 3),
+  (20, 'Gabriel', 'Rios', '30000020', 10, 'gabriel.rios@bancoregional.com', '011-6000020', '2010-09-21', 150000.00, 4),
+  (1, 'Bruno', 'Vega', '30000021', 1, 'bruno.vega@bancoregional.com', '011-6000021', '2011-10-22', 151500.00, 5),
+  (2, 'Franco', 'Benitez', '30000022', 2, 'franco.benitez@bancoregional.com', '011-6000022', '2012-11-23', 153000.00, 6),
+  (3, 'Tomas', 'Castillo', '30000023', 3, 'tomas.castillo@bancoregional.com', '011-6000023', '2013-12-24', 154500.00, 7),
+  (4, 'Lautaro', 'Peralta', '30000024', 4, 'lautaro.peralta@bancoregional.com', '011-6000024', '2014-01-25', 156000.00, 8),
+  (5, 'Ezequiel', 'Vazquez', '30000025', 5, 'ezequiel.vazquez@bancoregional.com', '011-6000025', '2015-02-26', 157500.00, 1),
+  (6, 'Matias', 'Suarez', '30000026', 6, 'matias.suarez@bancoregional.com', '011-6000026', '2016-03-27', 159000.00, 2),
+  (7, 'Joaquin', 'Navarro', '30000027', 7, 'joaquin.navarro@bancoregional.com', '011-6000027', '2017-04-28', 160500.00, 3),
+  (8, 'Nahuel', 'Ibarra', '30000028', 8, 'nahuel.ibarra@bancoregional.com', '011-6000028', '2018-05-01', 162000.00, 4),
+  (9, 'Ramiro', 'Dominguez', '30000029', 9, 'ramiro.dominguez@bancoregional.com', '011-6000029', '2019-06-02', 163500.00, 5),
+  (10, 'Ignacio', 'Moreno', '30000030', 10, 'ignacio.moreno@bancoregional.com', '011-6000030', '2010-07-03', 165000.00, 6),
+  (11, 'Paula', 'Castro', '30000031', 1, 'paula.castro@bancoregional.com', '011-6000031', '2011-08-04', 166500.00, 7),
+  (12, 'Rocio', 'Farias', '30000032', 2, 'rocio.farias@bancoregional.com', '011-6000032', '2012-09-05', 168000.00, 8),
+  (13, 'Melina', 'Quiroga', '30000033', 3, 'melina.quiroga@bancoregional.com', '011-6000033', '2013-10-06', 169500.00, 1),
+  (14, 'Brenda', 'Cabrera', '30000034', 4, 'brenda.cabrera@bancoregional.com', '011-6000034', '2014-11-07', 171000.00, 2),
+  (15, 'Daniela', 'Luna', '30000035', 5, 'daniela.luna@bancoregional.com', '011-6000035', '2015-12-08', 172500.00, 3),
+  (16, 'Antonella', 'Villalba', '30000036', 6, 'antonella.villalba@bancoregional.com', '011-6000036', '2016-01-09', 174000.00, 4),
+  (17, 'Ayelen', 'Palacios', '30000037', 7, 'ayelen.palacios@bancoregional.com', '011-6000037', '2017-02-10', 175500.00, 5),
+  (18, 'Selena', 'Correa', '30000038', 8, 'selena.correa@bancoregional.com', '011-6000038', '2018-03-11', 177000.00, 6),
+  (19, 'Noelia', 'Ramos', '30000039', 9, 'noelia.ramos@bancoregional.com', '011-6000039', '2019-04-12', 178500.00, 7),
+  (20, 'Belen', 'Aguilar', '30000040', 10, 'belen.aguilar@bancoregional.com', '011-6000040', '2010-05-13', 180000.00, 8),
+  (1, 'Emiliano', 'Ojeda', '30000041', 1, 'emiliano.ojeda@bancoregional.com', '011-6000041', '2011-06-14', 181500.00, 1),
+  (2, 'Hernan', 'Mendoza', '30000042', 2, 'hernan.mendoza@bancoregional.com', '011-6000042', '2012-07-15', 183000.00, 2),
+  (3, 'Gaston', 'Caceres', '30000043', 3, 'gaston.caceres@bancoregional.com', '011-6000043', '2013-08-16', 184500.00, 3),
+  (4, 'Tobias', 'Godoy', '30000044', 4, 'tobias.godoy@bancoregional.com', '011-6000044', '2014-09-17', 186000.00, 4),
+  (5, 'Nestor', 'Nunez', '30000045', 5, 'nestor.nunez@bancoregional.com', '011-6000045', '2015-10-18', 187500.00, 5),
+  (6, 'Leandro', 'Bravo', '30000046', 6, 'leandro.bravo@bancoregional.com', '011-6000046', '2016-11-19', 189000.00, 6),
+  (7, 'Gonzalo', 'Ocampo', '30000047', 7, 'gonzalo.ocampo@bancoregional.com', '011-6000047', '2017-12-20', 190500.00, 7),
+  (8, 'Maximiliano', 'Roldan', '30000048', 8, 'maximiliano.roldan@bancoregional.com', '011-6000048', '2018-01-21', 192000.00, 8),
+  (9, 'Rodrigo', 'Soria', '30000049', 9, 'rodrigo.soria@bancoregional.com', '011-6000049', '2019-02-22', 193500.00, 1),
+  (10, 'Sebastian', 'Campos', '30000050', 10, 'sebastian.campos@bancoregional.com', '011-6000050', '2010-03-23', 195000.00, 2),
+  (11, 'Carolina', 'Salas', '30000051', 1, 'carolina.salas@bancoregional.com', '011-6000051', '2011-04-24', 196500.00, 3),
+  (12, 'Pilar', 'Mansilla', '30000052', 2, 'pilar.mansilla@bancoregional.com', '011-6000052', '2012-05-25', 198000.00, 4),
+  (13, 'Angela', 'Paredes', '30000053', 3, 'angela.paredes@bancoregional.com', '011-6000053', '2013-06-26', 199500.00, 5),
+  (14, 'Mariana', 'Soto', '30000054', 4, 'mariana.soto@bancoregional.com', '011-6000054', '2014-07-27', 201000.00, 6),
+  (15, 'Cecilia', 'Ayala', '30000055', 5, 'cecilia.ayala@bancoregional.com', '011-6000055', '2015-08-28', 202500.00, 7),
+  (16, 'Tamara', 'Maidana', '30000056', 6, 'tamara.maidana@bancoregional.com', '011-6000056', '2016-09-01', 204000.00, 8),
+  (17, 'Daiana', 'Olivera', '30000057', 7, 'daiana.olivera@bancoregional.com', '011-6000057', '2017-10-02', 205500.00, 1),
+  (18, 'Lorena', 'Centurion', '30000058', 8, 'lorena.centurion@bancoregional.com', '011-6000058', '2018-11-03', 207000.00, 2),
+  (19, 'Milagros', 'Figueroa', '30000059', 9, 'milagros.figueroa@bancoregional.com', '011-6000059', '2019-12-04', 208500.00, 3),
+  (20, 'Romina', 'Riquelme', '30000060', 10, 'romina.riquelme@bancoregional.com', '011-6000060', '2010-01-05', 210000.00, 4);
+
+-- clientes
+INSERT INTO clientes
+  (nombre, apellido, dni, fecha_nacimiento, email, telefono, direccion,
+   ciudad, provincia, id_provincia, id_ciudad,
+   ingresos_declarados, id_situacion_laboral, id_campania_ingreso, id_estado)
+VALUES
+  ('Lucia',       'Benitez',      '35000001', '1992-03-14', 'lucia.benitez@mail.com',      '0376-5000001', 'Av. Mitre 1200',
+   'Posadas',              'Misiones',           14, 18, 280000.00, 1,  1, 1),
+  ('Sofia',       'Acosta',       '35000002', '1995-07-22', 'sofia.acosta@mail.com',       '0376-5000002', 'Calle San Martin 450',
+   'Posadas',              'Misiones',           14, 18, 195000.00, 3,  2, 3),
+  ('Martina',     'Lopez',        '35000003', '1988-11-05', 'martina.lopez@mail.com',      '03755-5000003','Av. Libertad 600',
+   'Obera',                'Misiones',           14, 19, 320000.00, 2,  3, 1),
+  ('Camila',      'Rojas',        '35000004', '1990-01-19', 'camila.rojas@mail.com',       '03755-5000004','Ruta 14 Km 9',
+   'Obera',                'Misiones',           14, 19, 150000.00, 6,  4, 4),
+  ('Valentina',   'Mendoza',      '35000005', '1994-09-09', 'valentina.mendoza@mail.com',  '03751-5000005','B° Pinares Mz 3 Casa 2',
+   'Eldorado',             'Misiones',           14, 20, 210000.00, 4,  5, 2),
+  ('Agustina',    'Gimenez',      '35000006', '1993-05-30', 'agustina.gimenez@mail.com',   '03757-5000006','Av. Brasil 900',
+   'Puerto Iguazu',        'Misiones',           14, 21, 260000.00, 1,  6, 1),
+  ('Florencia',   'Sosa',         '35000007', '1987-08-17', 'florencia.sosa@mail.com',     '03757-5000007','Zona Frontera Local 12',
+   'Puerto Iguazu',        'Misiones',           14, 21, 110000.00, 5,  7, 2),
+  ('Julieta',     'Cardozo',      '35000008', '1996-02-11', 'julieta.cardozo@mail.com',    '0341-5000008', 'Cordoba 1400',
+   'Rosario',              'Santa Fe',          21, 22, 305000.00, 1,  8, 1),
+  ('Micaela',     'Herrera',      '35000009', '1998-04-28', 'micaela.herrera@mail.com',    '0341-5000009', 'Av. Eva Peron 7300',
+   'Rosario',              'Santa Fe',          21, 22, 180000.00, 7,  9, 6),
+  ('Carla',       'Franco',       '35000010', '1985-12-03', 'carla.franco@mail.com',       '0342-5000010', 'San Martin 2150',
+   'Santa Fe Capital',     'Santa Fe',          21, 23, 340000.00, 1, 10, 1),
+  ('Paula',       'Vega',         '35000011', '1991-06-02', 'paula.vega@mail.com',         '0342-5000011', 'Av. Gorriti 3950',
+   'Santa Fe Capital',     'Santa Fe',          21, 23, 90000.00, 6, 11, 2),
+  ('Rocio',       'Silva',        '35000012', '1997-01-25', 'rocio.silva@mail.com',        '03492-5000012','Bv. Santa Fe 960',
+   'Rafaela',              'Santa Fe',          21, 24, 175000.00, 3, 12, 3),
+  ('Melina',      'Blanco',       '35000013', '1989-09-13', 'melina.blanco@mail.com',      '03462-5000013','Belgrano 790',
+   'Venado Tuerto',        'Santa Fe',          21, 25, 220000.00, 2,  1, 4),
+  ('Brenda',      'Pereyra',      '35000014', '1993-03-06', 'brenda.pereyra@mail.com',     '0221-5000014','Calle 7 Nº 900',
+   'La Plata',             'Buenos Aires',       1, 1, 310000.00, 1,  1, 1),
+  ('Daniela',     'Luna',         '35000015', '1990-10-21', 'daniela.luna@mail.com',       '0221-5000015','Camino Centenario 2340',
+   'La Plata',             'Buenos Aires',       1, 1, 130000.00, 5,  1, 2),
+  ('Antonella',   'Cabrera',      '35000016', '1995-05-15', 'antonella.cabrera@mail.com',  '0223-5000016','Av. Luro 1810',
+   'Mar del Plata',        'Buenos Aires',       1, 2, 250000.00, 1,  1, 1),
+  ('Ayelen',      'Navarro',      '35000017', '1992-07-08', 'ayelen.navarro@mail.com',     '0223-5000017','Olavarria 3110',
+   'Mar del Plata',        'Buenos Aires',       1, 2, 140000.00, 4,  1, 4),
+  ('Selena',      'Cruz',         '35000018', '1994-11-29', 'selena.cruz@mail.com',        '0291-5000018','Av. Alem 610',
+   'Bahia Blanca',         'Buenos Aires',       1, 3, 200000.00, 2,  2, 1),
+  ('Noelia',      'Farias',       '35000019', '1986-01-09', 'noelia.farias@mail.com',      '0249-5000019','9 de Julio 560',
+   'Tandil',               'Buenos Aires',       1, 4, 160000.00, 8,  2, 8),
+  ('Belen',       'Ayala',        '35000020', '1993-08-27', 'belen.ayala@mail.com',        '0336-5000020','Mitre 330',
+   'San Nicolas de los Arroyos', 'Buenos Aires',1, 5, 120000.00, 6,  2, 6),
+  ('Carolina',    'Soto',         '35000021', '1988-02-14', 'carolina.soto@mail.com',      '011-5000021', 'Honduras 4810',
+   'Palermo',              'Ciudad Autonoma de Buenos Aires',2, 6, 380000.00, 1,  2, 1),
+  ('Pilar',       'Mansilla',     '35000022', '1996-10-18', 'pilar.mansilla@mail.com',     '011-5000022', 'Costa Rica 5610',
+   'Palermo',              'Ciudad Autonoma de Buenos Aires',2, 6, 260000.00, 3, 10, 3),
+  ('Angela',      'Campos',       '35000023', '1991-04-03', 'angela.campos@mail.com',      '011-5000023', 'Av. Pueyrredon 310',
+   'Balvanera',           'Ciudad Autonoma de Buenos Aires',2, 7, 145000.00, 4, 3, 2),
+  ('Mariana',     'Salas',        '35000024', '1987-06-11', 'mariana.salas@mail.com',      '011-5000024', 'Av. Rivadavia 6810',
+   'Flores',              'Ciudad Autonoma de Buenos Aires',2, 8, 210000.00, 1, 12, 1),
+  ('Cecilia',     'Olivera',      '35000025', '1990-09-23', 'cecilia.olivera@mail.com',    '011-5000025', 'Av. Triunvirato 4910',
+   'Villa Urquiza',       'Ciudad Autonoma de Buenos Aires',2, 9, 230000.00, 2,  1, 4),
+  ('Tamara',      'Maidana',      '35000026', '1995-12-30', 'tamara.maidana@mail.com',     '011-5000026', 'Av. Ramos Mejia 1360',
+   'Retiro',              'Ciudad Autonoma de Buenos Aires',2, 10, 175000.00, 6,  2, 2),
+  ('Daiana',      'Centurion',    '35000027', '1992-03-08', 'daiana.centurion@mail.com',   '0351-5000027','25 de Mayo 160',
+   'Cordoba Capital',     'Cordoba',           6, 11, 300000.00, 1,  3, 1),
+  ('Lorena',      'Riquelme',     '35000028', '1989-07-20', 'lorena.riquelme@mail.com',    '0351-5000028','Bv. Illia 310',
+   'Cordoba Capital',     'Cordoba',           6, 11, 155000.00, 4,  4, 4),
+  ('Milagros',    'Paz',          '35000029', '1994-01-01', 'milagros.paz@mail.com',       '03541-5000029','Av. Libertad 60',
+   'Villa Carlos Paz',    'Cordoba',           6, 12, 190000.00, 3,  5, 3),
+  ('Romina',      'Lozano',       '35000030', '1991-05-16', 'romina.lozano@mail.com',      '0358-5000030','Colon 760',
+   'Rio Cuarto',           'Cordoba',           6, 13, 220000.00, 1,  6, 1),
+  ('Luciano',     'Guzman',       '35000031', '1986-10-09', 'luciano.guzman@mail.com',     '0353-5000031','San Martin 430',
+   'Villa Maria',          'Cordoba',           6, 14, 80000.00, 6,  7, 2),
+  ('Sergio',      'Romano',       '35000032', '1984-02-02', 'sergio.romano@mail.com',      '0379-5000032','Junin 960',
+   'Corrientes Capital',  'Corrientes',         7, 15, 260000.00, 1,  8, 1),
+  ('Gustavo',     'Cabral',       '35000033', '1979-11-27', 'gustavo.cabral@mail.com',     '0379-5000033','Costanera Sur 2110',
+   'Corrientes Capital',  'Corrientes',         7, 15, 95000.00, 5,  9, 5),
+  ('Oscar',       'Pereyra',      '35000034', '1982-08-19', 'oscar.pereyra@mail.com',      '03777-5000034','España 440',
+   'Goya',                'Corrientes',         7, 16, 170000.00, 3, 10, 3),
+  ('Nicolas',     'Vera',         '35000035', '1990-12-06', 'nicolas.vera@mail.com',       '03772-5000035','Madariaga 630',
+   'Paso de los Libres', 'Corrientes',         7, 17, 210000.00, 2, 11, 2),
+  ('Hernan',      'Suarez',       '35000036', '1985-04-24', 'hernan.suarez@mail.com',      '0362-5000036','Av. 9 de Julio 460',
+   'Resistencia',         'Chaco',             4, 26, 240000.00, 1, 12, 1),
+  ('Emiliano',    'Quiroz',       '35000037', '1993-01-31', 'emiliano.quiroz@mail.com',    '0364-5000037','Urquiza 860',
+   'Presidencia Roque Saenz Peña','Chaco',    4, 27, 130000.00, 4,  1, 4),
+  ('Gaston',      'Ferreyra',     '35000038', '1987-09-13', 'gaston.ferreyra@mail.com',    '0370-5000038','San Martin 1160',
+   'Formosa Capital',     'Formosa',           9, 28, 180000.00, 2,  2, 2),
+  ('Tobias',      'Tarnowski',    '35000039', '2005-02-04', 'tobias.tarnowski@mail.com',   '0376-5000039','B° Itaembe Mini',
+   'Posadas',              'Misiones',           14, 18,  95000.00, 8,  3, 8),
+  ('Franco',      'Villalba',     '35000040', '1998-03-19', 'franco.villalba@mail.com',    '0261-5000040','San Martin 990',
+   'Mendoza Capital',     'Mendoza',          13, 29, 220000.00, 3,  4, 3),
+  ('Lautaro',     'Ojeda',        '35000041', '1997-07-01', 'lautaro.ojeda@mail.com',      '0260-5000041','Av. H. Yrigoyen 460',
+   'San Rafael',           'Mendoza',          13, 30, 140000.00, 2,  5, 2),
+  ('Ezequiel',    'Roldan',       '35000042', '1994-11-08', 'ezequiel.roldan@mail.com',    '0387-5000042','Caseros 610',
+   'Salta Capital',        'Salta',            17, 31, 195000.00, 1,  6, 1),
+  ('Matias',      'Soria',        '35000043', '1992-05-26', 'matias.soria@mail.com',       '03875-5000043','San Martin 330',
+   'Tartagal',             'Salta',            17, 32, 115000.00, 6,  7, 6),
+  ('Joaquin',     'Campos',       '35000044', '1996-09-07', 'joaquin.campos@mail.com',     '0381-5000044','Muñecas 660',
+   'San Miguel de Tucuman','Tucuman',         24, 33, 210000.00, 1,  8, 1),
+  ('Nahuel',      'Garay',        '35000045', '1993-01-05', 'nahuel.garay@mail.com',       '0381-5000045','Av. Alem 310',
+   'Tafi Viejo',           'Tucuman',         24, 34, 160000.00, 4,  9, 4),
+  ('Ramiro',      'Coronel',      '35000046', '1989-06-29', 'ramiro.coronel@mail.com',     '02966-5000046','Roca 260',
+   'Rio Gallegos',         'Santa Cruz',      20, 35, 240000.00, 3, 10, 3),
+  ('Ignacio',     'Aguilera',     '35000047', '1991-10-12', 'ignacio.aguilera@mail.com',   '02901-5000047','San Martin 790',
+   'Ushuaia',              'Tierra del Fuego',23, 36, 275000.00, 1, 11, 1),
+  ('Bruno',       'Nieves',       '35000048', '1990-02-18', 'bruno.nieves@mail.com',       '011-5000048', 'B° Las Flores',
+   'Posadas',              'Misiones',           NULL, NULL, 130000.00, 6, 12, 6),
+  ('Franco',      'Acuna',        '35000049', '1995-03-03', 'franco.acuna@mail.com',       '011-5000049', 'Zona Centro',
+   'Corrientes Capital',  'Corrientes',         NULL, NULL, 90000.00, 6,  1, 2),
+  ('Gonzalo',     'Maidana',      '35000050', '1993-08-08', 'gonzalo.maidana@mail.com',    '011-5000050', 'Calle Principal 120',
+   'Villa Carlos Paz',    'Cordoba',           NULL, NULL, 150000.00, 4,  2, 4),
+  ('Maximiliano', 'Paz',          '35000051', '1988-12-24', 'maxi.paz@mail.com',           '011-5000051', 'Av. Costanera 200',
+   'Rosario',              'Santa Fe',          NULL, NULL, 210000.00, 3,  3, 3),
+  ('Rodrigo',     'Lagos',        '35000052', '1992-09-15', 'rodrigo.lagos@mail.com',      '011-5000052', 'Pasaje 12',
+   'San Miguel de Tucuman','Tucuman',         NULL, NULL, 120000.00, 2,  4, 2),
+  ('Sebastian',   'Ferreyra',     '35000053', '1987-11-01', 'sebastian.ferreyra@mail.com', '011-5000053', 'Calle 9',
+   'Mendoza Capital',     'Mendoza',          NULL, NULL, 260000.00, 1,  5, 1),
+  ('Carolina',    'Nuñez',        '35000054', '1994-04-06', 'carolina.nunez@mail.com',     '011-5000054', 'Ruta 12 Km 5',
+   'Goya',                'Corrientes',         NULL, NULL,  85000.00, 5,  6, 5),
+  ('Pilar',       'Escobar',      '35000055', '1996-01-27', 'pilar.escobar@mail.com',      '011-5000055', 'Camino al rio',
+   'Rio Gallegos',         'Santa Cruz',      NULL, NULL, 110000.00, 6,  7, 6),
+  ('Angela',      'Sigueira',     '35000056', '1993-03-30', 'angela.sigueira@mail.com',    '011-5000056', 'Pasaje Norte',
+   'Ushuaia',              'Tierra del Fuego',NULL, NULL, 190000.00, 3,  8, 3),
+  ('Mariana',     'Delgado',      '35000057', '1989-07-04', 'mariana.delgado@mail.com',    '011-5000057', 'B° Centro',
+   'Formosa Capital',     'Formosa',           NULL, NULL, 130000.00, 2,  9, 2),
+  ('Cecilia',     'Moyano',       '35000058', '1991-09-21', 'cecilia.moyano@mail.com',     '011-5000058', 'Zona Oeste',
+   'Resistencia',         'Chaco',             NULL, NULL, 170000.00, 4, 10, 4),
+  ('Tamara',      'Godoy',        '35000059', '1995-10-31', 'tamara.godoy@mail.com',       '011-5000059', 'Barrio Norte',
+   'Corrientes Capital',  'Corrientes',         NULL, NULL, 220000.00, 1, 11, 1),
+  ('Daiana',      'Dominguez',    '35000060', '1992-12-13', 'daiana.dominguez@mail.com',   '011-5000060', 'Loteo Sur',
+   'Posadas',              'Misiones',           NULL, NULL, 105000.00, 6, 12, 2);
+
+
+-- productos_financieros
+INSERT INTO productos_financieros
+  (nombre, id_tipo, descripcion, tasa_base,
+   monto_minimo, monto_maximo,
+   plazo_minimo_meses, plazo_maximo_meses,
+   requisitos, id_estado)
+VALUES
+  ('Credito Personal Flexible 01', 1,
+   'Credito personal en pesos para consumo general.',
+   41.000, 50000.00, 350000.00, 12, 60,
+   'DNI, recibo de sueldo o comprobante de ingresos formales.', 1),
+  ('Credito Personal Flexible 02', 1,
+   'Credito personal en pesos para consumo general.',
+   42.000, 60000.00, 360000.00, 12, 60,
+   'DNI, recibo de sueldo o comprobante de ingresos formales.', 2),
+  ('Credito Personal Flexible 03', 1,
+   'Credito personal en pesos para consumo general.',
+   43.000, 70000.00, 370000.00, 12, 60,
+   'DNI, recibo de sueldo o comprobante de ingresos formales.', 3),
+  ('Credito Personal Flexible 04', 1,
+   'Credito personal en pesos para consumo general.',
+   44.000, 80000.00, 380000.00, 12, 60,
+   'DNI, recibo de sueldo o comprobante de ingresos formales.', 4),
+  ('Credito Personal Flexible 05', 1,
+   'Credito personal en pesos para consumo general.',
+   45.000, 90000.00, 390000.00, 12, 60,
+   'DNI, recibo de sueldo o comprobante de ingresos formales.', 5),
+  ('Credito Personal Flexible 06', 1,
+   'Credito personal en pesos para consumo general.',
+   46.000, 100000.00, 400000.00, 12, 60,
+   'DNI, recibo de sueldo o comprobante de ingresos formales.', 6),
+  ('Credito Personal Flexible 07', 1,
+   'Credito personal en pesos para consumo general.',
+   47.000, 110000.00, 410000.00, 12, 60,
+   'DNI, recibo de sueldo o comprobante de ingresos formales.', 1),
+  ('Credito Personal Flexible 08', 1,
+   'Credito personal en pesos para consumo general.',
+   48.000, 120000.00, 420000.00, 12, 60,
+   'DNI, recibo de sueldo o comprobante de ingresos formales.', 2),
+  ('Credito Personal Flexible 09', 1,
+   'Credito personal en pesos para consumo general.',
+   49.000, 130000.00, 430000.00, 12, 60,
+   'DNI, recibo de sueldo o comprobante de ingresos formales.', 3),
+  ('Credito Personal Flexible 10', 1,
+   'Credito personal en pesos para consumo general.',
+   50.000, 140000.00, 440000.00, 12, 60,
+   'DNI, recibo de sueldo o comprobante de ingresos formales.', 4),
+  ('Credito Hipotecario Vivienda 01', 2,
+   'Credito hipotecario para vivienda unica o segunda vivienda.',
+   26.000, 1000000.00, 10000000.00, 60, 360,
+   'DNI, constancia de CUIL, comprobantes de ingresos y tasacion de la propiedad.', 2),
+  ('Credito Hipotecario Vivienda 02', 2,
+   'Credito hipotecario para vivienda unica o segunda vivienda.',
+   27.000, 1500000.00, 10500000.00, 60, 360,
+   'DNI, constancia de CUIL, comprobantes de ingresos y tasacion de la propiedad.', 3),
+  ('Credito Hipotecario Vivienda 03', 2,
+   'Credito hipotecario para vivienda unica o segunda vivienda.',
+   28.000, 2000000.00, 11000000.00, 60, 360,
+   'DNI, constancia de CUIL, comprobantes de ingresos y tasacion de la propiedad.', 4),
+  ('Credito Hipotecario Vivienda 04', 2,
+   'Credito hipotecario para vivienda unica o segunda vivienda.',
+   29.000, 2500000.00, 11500000.00, 60, 360,
+   'DNI, constancia de CUIL, comprobantes de ingresos y tasacion de la propiedad.', 5),
+  ('Credito Hipotecario Vivienda 05', 2,
+   'Credito hipotecario para vivienda unica o segunda vivienda.',
+   30.000, 3000000.00, 12000000.00, 60, 360,
+   'DNI, constancia de CUIL, comprobantes de ingresos y tasacion de la propiedad.', 6),
+  ('Credito Hipotecario Vivienda 06', 2,
+   'Credito hipotecario para vivienda unica o segunda vivienda.',
+   31.000, 3500000.00, 12500000.00, 60, 360,
+   'DNI, constancia de CUIL, comprobantes de ingresos y tasacion de la propiedad.', 1),
+  ('Credito Hipotecario Vivienda 07', 2,
+   'Credito hipotecario para vivienda unica o segunda vivienda.',
+   32.000, 4000000.00, 13000000.00, 60, 360,
+   'DNI, constancia de CUIL, comprobantes de ingresos y tasacion de la propiedad.', 2),
+  ('Credito Hipotecario Vivienda 08', 2,
+   'Credito hipotecario para vivienda unica o segunda vivienda.',
+   33.000, 4500000.00, 13500000.00, 60, 360,
+   'DNI, constancia de CUIL, comprobantes de ingresos y tasacion de la propiedad.', 3),
+  ('Credito Hipotecario Vivienda 09', 2,
+   'Credito hipotecario para vivienda unica o segunda vivienda.',
+   34.000, 5000000.00, 14000000.00, 60, 360,
+   'DNI, constancia de CUIL, comprobantes de ingresos y tasacion de la propiedad.', 4),
+  ('Credito Hipotecario Vivienda 10', 2,
+   'Credito hipotecario para vivienda unica o segunda vivienda.',
+   35.000, 5500000.00, 14500000.00, 60, 360,
+   'DNI, constancia de CUIL, comprobantes de ingresos y tasacion de la propiedad.', 5),
+  ('Credito Prendario Auto 01', 3,
+   'Credito prendario para financiacion de vehiculos nuevos o usados.',
+   31.000, 200000.00, 1000000.00, 24, 84,
+   'DNI, comprobante de ingresos y documentacion del vehiculo.', 3),
+  ('Credito Prendario Auto 02', 3,
+   'Credito prendario para financiacion de vehiculos nuevos o usados.',
+   32.000, 250000.00, 1050000.00, 24, 84,
+   'DNI, comprobante de ingresos y documentacion del vehiculo.', 4),
+  ('Credito Prendario Auto 03', 3,
+   'Credito prendario para financiacion de vehiculos nuevos o usados.',
+   33.000, 300000.00, 1100000.00, 24, 84,
+   'DNI, comprobante de ingresos y documentacion del vehiculo.', 5),
+  ('Credito Prendario Auto 04', 3,
+   'Credito prendario para financiacion de vehiculos nuevos o usados.',
+   34.000, 350000.00, 1150000.00, 24, 84,
+   'DNI, comprobante de ingresos y documentacion del vehiculo.', 6),
+  ('Credito Prendario Auto 05', 3,
+   'Credito prendario para financiacion de vehiculos nuevos o usados.',
+   35.000, 400000.00, 1200000.00, 24, 84,
+   'DNI, comprobante de ingresos y documentacion del vehiculo.', 1),
+  ('Credito Prendario Auto 06', 3,
+   'Credito prendario para financiacion de vehiculos nuevos o usados.',
+   36.000, 450000.00, 1250000.00, 24, 84,
+   'DNI, comprobante de ingresos y documentacion del vehiculo.', 2),
+  ('Credito Prendario Auto 07', 3,
+   'Credito prendario para financiacion de vehiculos nuevos o usados.',
+   37.000, 500000.00, 1300000.00, 24, 84,
+   'DNI, comprobante de ingresos y documentacion del vehiculo.', 3),
+  ('Credito Prendario Auto 08', 3,
+   'Credito prendario para financiacion de vehiculos nuevos o usados.',
+   38.000, 550000.00, 1350000.00, 24, 84,
+   'DNI, comprobante de ingresos y documentacion del vehiculo.', 4),
+  ('Credito Prendario Auto 09', 3,
+   'Credito prendario para financiacion de vehiculos nuevos o usados.',
+   39.000, 600000.00, 1400000.00, 24, 84,
+   'DNI, comprobante de ingresos y documentacion del vehiculo.', 5),
+  ('Credito Prendario Auto 10', 3,
+   'Credito prendario para financiacion de vehiculos nuevos o usados.',
+   40.000, 650000.00, 1450000.00, 24, 84,
+   'DNI, comprobante de ingresos y documentacion del vehiculo.', 6),
+  ('Tarjeta de Credito Regional 01', 4,
+   'Linea de tarjeta de credito con beneficios regionales.',
+   61.000, 30000.00, 230000.00, 6, 24,
+   'DNI, evaluacion crediticia y comprobante de ingresos.', 1),
+  ('Tarjeta de Credito Regional 02', 4,
+   'Linea de tarjeta de credito con beneficios regionales.',
+   62.000, 35000.00, 235000.00, 6, 24,
+   'DNI, evaluacion crediticia y comprobante de ingresos.', 2),
+  ('Tarjeta de Credito Regional 03', 4,
+   'Linea de tarjeta de credito con beneficios regionales.',
+   63.000, 40000.00, 240000.00, 6, 24,
+   'DNI, evaluacion crediticia y comprobante de ingresos.', 3),
+  ('Tarjeta de Credito Regional 04', 4,
+   'Linea de tarjeta de credito con beneficios regionales.',
+   64.000, 45000.00, 245000.00, 6, 24,
+   'DNI, evaluacion crediticia y comprobante de ingresos.', 4),
+  ('Tarjeta de Credito Regional 05', 4,
+   'Linea de tarjeta de credito con beneficios regionales.',
+   65.000, 50000.00, 250000.00, 6, 24,
+   'DNI, evaluacion crediticia y comprobante de ingresos.', 5),
+  ('Tarjeta de Credito Regional 06', 4,
+   'Linea de tarjeta de credito con beneficios regionales.',
+   66.000, 55000.00, 255000.00, 6, 24,
+   'DNI, evaluacion crediticia y comprobante de ingresos.', 6),
+  ('Tarjeta de Credito Regional 07', 4,
+   'Linea de tarjeta de credito con beneficios regionales.',
+   67.000, 60000.00, 260000.00, 6, 24,
+   'DNI, evaluacion crediticia y comprobante de ingresos.', 1),
+  ('Tarjeta de Credito Regional 08', 4,
+   'Linea de tarjeta de credito con beneficios regionales.',
+   68.000, 65000.00, 265000.00, 6, 24,
+   'DNI, evaluacion crediticia y comprobante de ingresos.', 2),
+  ('Tarjeta de Credito Regional 09', 4,
+   'Linea de tarjeta de credito con beneficios regionales.',
+   69.000, 70000.00, 270000.00, 6, 24,
+   'DNI, evaluacion crediticia y comprobante de ingresos.', 3),
+  ('Tarjeta de Credito Regional 10', 4,
+   'Linea de tarjeta de credito con beneficios regionales.',
+   70.000, 75000.00, 275000.00, 6, 24,
+   'DNI, evaluacion crediticia y comprobante de ingresos.', 4),
+  ('Cuenta Corriente PyME 01', 5,
+   'Cuenta corriente para empresas y profesionales independientes.',
+   56.000, 0.00, 150000.00, 1, 18,
+   'DNI/estatuto social y documentacion de actividad economica.', 2),
+  ('Cuenta Corriente PyME 02', 5,
+   'Cuenta corriente para empresas y profesionales independientes.',
+   57.000, 0.00, 170000.00, 1, 18,
+   'DNI/estatuto social y documentacion de actividad economica.', 3),
+  ('Cuenta Corriente PyME 03', 5,
+   'Cuenta corriente para empresas y profesionales independientes.',
+   58.000, 0.00, 190000.00, 1, 18,
+   'DNI/estatuto social y documentacion de actividad economica.', 4),
+  ('Cuenta Corriente PyME 04', 5,
+   'Cuenta corriente para empresas y profesionales independientes.',
+   59.000, 0.00, 210000.00, 1, 18,
+   'DNI/estatuto social y documentacion de actividad economica.', 5),
+  ('Cuenta Corriente PyME 05', 5,
+   'Cuenta corriente para empresas y profesionales independientes.',
+   60.000, 0.00, 230000.00, 1, 18,
+   'DNI/estatuto social y documentacion de actividad economica.', 6),
+  ('Cuenta Corriente PyME 06', 5,
+   'Cuenta corriente para empresas y profesionales independientes.',
+   61.000, 0.00, 250000.00, 1, 18,
+   'DNI/estatuto social y documentacion de actividad economica.', 1),
+  ('Cuenta Corriente PyME 07', 5,
+   'Cuenta corriente para empresas y profesionales independientes.',
+   62.000, 0.00, 270000.00, 1, 18,
+   'DNI/estatuto social y documentacion de actividad economica.', 2),
+  ('Cuenta Corriente PyME 08', 5,
+   'Cuenta corriente para empresas y profesionales independientes.',
+   63.000, 0.00, 290000.00, 1, 18,
+   'DNI/estatuto social y documentacion de actividad economica.', 3),
+  ('Cuenta Corriente PyME 09', 5,
+   'Cuenta corriente para empresas y profesionales independientes.',
+   64.000, 0.00, 310000.00, 1, 18,
+   'DNI/estatuto social y documentacion de actividad economica.', 4),
+  ('Cuenta Corriente PyME 10', 5,
+   'Cuenta corriente para empresas y profesionales independientes.',
+   65.000, 0.00, 330000.00, 1, 18,
+   'DNI/estatuto social y documentacion de actividad economica.', 5),
+  ('Descubierto en Cuenta 01', 6,
+   'Linea de descubierto en cuenta a corto plazo.',
+   71.000, 0.00, 80000.00, 1, 12,
+   'Cuenta activa en la entidad y evaluacion crediticia.', 3),
+  ('Descubierto en Cuenta 02', 6,
+   'Linea de descubierto en cuenta a corto plazo.',
+   72.000, 0.00, 90000.00, 1, 12,
+   'Cuenta activa en la entidad y evaluacion crediticia.', 4),
+  ('Descubierto en Cuenta 03', 6,
+   'Linea de descubierto en cuenta a corto plazo.',
+   73.000, 0.00, 100000.00, 1, 12,
+   'Cuenta activa en la entidad y evaluacion crediticia.', 5),
+  ('Descubierto en Cuenta 04', 6,
+   'Linea de descubierto en cuenta a corto plazo.',
+   74.000, 0.00, 110000.00, 1, 12,
+   'Cuenta activa en la entidad y evaluacion crediticia.', 6),
+  ('Descubierto en Cuenta 05', 6,
+   'Linea de descubierto en cuenta a corto plazo.',
+   75.000, 0.00, 120000.00, 1, 12,
+   'Cuenta activa en la entidad y evaluacion crediticia.', 1),
+  ('Descubierto en Cuenta 06', 6,
+   'Linea de descubierto en cuenta a corto plazo.',
+   76.000, 0.00, 130000.00, 1, 12,
+   'Cuenta activa en la entidad y evaluacion crediticia.', 2),
+  ('Descubierto en Cuenta 07', 6,
+   'Linea de descubierto en cuenta a corto plazo.',
+   77.000, 0.00, 140000.00, 1, 12,
+   'Cuenta activa en la entidad y evaluacion crediticia.', 3),
+  ('Descubierto en Cuenta 08', 6,
+   'Linea de descubierto en cuenta a corto plazo.',
+   78.000, 0.00, 150000.00, 1, 12,
+   'Cuenta activa en la entidad y evaluacion crediticia.', 4),
+  ('Descubierto en Cuenta 09', 6,
+   'Linea de descubierto en cuenta a corto plazo.',
+   79.000, 0.00, 160000.00, 1, 12,
+   'Cuenta activa en la entidad y evaluacion crediticia.', 5),
+  ('Descubierto en Cuenta 10', 6,
+   'Linea de descubierto en cuenta a corto plazo.',
+   80.000, 0.00, 170000.00, 1, 12,
+   'Cuenta activa en la entidad y evaluacion crediticia.', 6);
+
+-- historico_tasas
+INSERT INTO historico_tasas
+  (id_producto, tasa_anterior, tasa_nueva, fecha_cambio,
+   motivo, usuario_responsable, vigente_desde, vigente_hasta)
+VALUES
+  (1, 40.000, 41.000, '2023-01-01',
+   'Ajuste inicial producto 1', 'seed_02', '2023-01-01', '2024-11-18'),
+  (1, 41.000, 41.500, '2024-11-19',
+   'Ajuste pre-2025 producto 1', 'seed_02', '2024-11-19', '2025-05-31'),
+  (1, 41.500, 42.000, '2025-06-01',
+   'Ajuste 2025 producto 1', 'seed_02', '2025-06-01', NULL),
+  (2, 41.000, 42.000, '2023-01-01',
+   'Ajuste inicial producto 2', 'seed_02', '2023-01-01', '2024-11-18'),
+  (2, 42.000, 42.500, '2024-11-19',
+   'Ajuste pre-2025 producto 2', 'seed_02', '2024-11-19', '2025-05-31'),
+  (2, 42.500, 43.000, '2025-06-01',
+   'Ajuste 2025 producto 2', 'seed_02', '2025-06-01', NULL),
+  (3, 42.000, 43.000, '2023-01-01',
+   'Ajuste inicial producto 3', 'seed_02', '2023-01-01', '2024-11-18'),
+  (3, 43.000, 43.500, '2024-11-19',
+   'Ajuste pre-2025 producto 3', 'seed_02', '2024-11-19', '2025-05-31'),
+  (3, 43.500, 44.000, '2025-06-01',
+   'Ajuste 2025 producto 3', 'seed_02', '2025-06-01', NULL),
+  (4, 43.000, 44.000, '2023-01-01',
+   'Ajuste inicial producto 4', 'seed_02', '2023-01-01', '2024-11-18'),
+  (4, 44.000, 44.500, '2024-11-19',
+   'Ajuste pre-2025 producto 4', 'seed_02', '2024-11-19', '2025-05-31'),
+  (4, 44.500, 45.000, '2025-06-01',
+   'Ajuste 2025 producto 4', 'seed_02', '2025-06-01', NULL),
+  (5, 44.000, 45.000, '2023-01-01',
+   'Ajuste inicial producto 5', 'seed_02', '2023-01-01', '2024-11-18'),
+  (5, 45.000, 45.500, '2024-11-19',
+   'Ajuste pre-2025 producto 5', 'seed_02', '2024-11-19', '2025-05-31'),
+  (5, 45.500, 46.000, '2025-06-01',
+   'Ajuste 2025 producto 5', 'seed_02', '2025-06-01', NULL),
+  (6, 45.000, 46.000, '2023-01-01',
+   'Ajuste inicial producto 6', 'seed_02', '2023-01-01', '2024-11-18'),
+  (6, 46.000, 46.500, '2024-11-19',
+   'Ajuste pre-2025 producto 6', 'seed_02', '2024-11-19', '2025-05-31'),
+  (6, 46.500, 47.000, '2025-06-01',
+   'Ajuste 2025 producto 6', 'seed_02', '2025-06-01', NULL),
+  (7, 46.000, 47.000, '2023-01-01',
+   'Ajuste inicial producto 7', 'seed_02', '2023-01-01', '2024-11-18'),
+  (7, 47.000, 47.500, '2024-11-19',
+   'Ajuste pre-2025 producto 7', 'seed_02', '2024-11-19', '2025-05-31'),
+  (7, 47.500, 48.000, '2025-06-01',
+   'Ajuste 2025 producto 7', 'seed_02', '2025-06-01', NULL),
+  (8, 47.000, 48.000, '2023-01-01',
+   'Ajuste inicial producto 8', 'seed_02', '2023-01-01', '2024-11-18'),
+  (8, 48.000, 48.500, '2024-11-19',
+   'Ajuste pre-2025 producto 8', 'seed_02', '2024-11-19', '2025-05-31'),
+  (8, 48.500, 49.000, '2025-06-01',
+   'Ajuste 2025 producto 8', 'seed_02', '2025-06-01', NULL),
+  (9, 48.000, 49.000, '2023-01-01',
+   'Ajuste inicial producto 9', 'seed_02', '2023-01-01', '2024-11-18'),
+  (9, 49.000, 49.500, '2024-11-19',
+   'Ajuste pre-2025 producto 9', 'seed_02', '2024-11-19', '2025-05-31'),
+  (9, 49.500, 50.000, '2025-06-01',
+   'Ajuste 2025 producto 9', 'seed_02', '2025-06-01', NULL),
+  (10, 49.000, 50.000, '2023-01-01',
+   'Ajuste inicial producto 10', 'seed_02', '2023-01-01', '2024-11-18'),
+  (10, 50.000, 50.500, '2024-11-19',
+   'Ajuste pre-2025 producto 10', 'seed_02', '2024-11-19', '2025-05-31'),
+  (10, 50.500, 51.000, '2025-06-01',
+   'Ajuste 2025 producto 10', 'seed_02', '2025-06-01', NULL),
+  (11, 25.000, 26.000, '2023-01-01',
+   'Ajuste inicial producto 11', 'seed_02', '2023-01-01', '2024-11-18'),
+  (11, 26.000, 26.500, '2024-11-19',
+   'Ajuste pre-2025 producto 11', 'seed_02', '2024-11-19', '2025-05-31'),
+  (11, 26.500, 27.000, '2025-06-01',
+   'Ajuste 2025 producto 11', 'seed_02', '2025-06-01', NULL),
+  (12, 26.000, 27.000, '2023-01-01',
+   'Ajuste inicial producto 12', 'seed_02', '2023-01-01', '2024-11-18'),
+  (12, 27.000, 27.500, '2024-11-19',
+   'Ajuste pre-2025 producto 12', 'seed_02', '2024-11-19', '2025-05-31'),
+  (12, 27.500, 28.000, '2025-06-01',
+   'Ajuste 2025 producto 12', 'seed_02', '2025-06-01', NULL),
+  (13, 27.000, 28.000, '2023-01-01',
+   'Ajuste inicial producto 13', 'seed_02', '2023-01-01', '2024-11-18'),
+  (13, 28.000, 28.500, '2024-11-19',
+   'Ajuste pre-2025 producto 13', 'seed_02', '2024-11-19', '2025-05-31'),
+  (13, 28.500, 29.000, '2025-06-01',
+   'Ajuste 2025 producto 13', 'seed_02', '2025-06-01', NULL),
+  (14, 28.000, 29.000, '2023-01-01',
+   'Ajuste inicial producto 14', 'seed_02', '2023-01-01', '2024-11-18'),
+  (14, 29.000, 29.500, '2024-11-19',
+   'Ajuste pre-2025 producto 14', 'seed_02', '2024-11-19', '2025-05-31'),
+  (14, 29.500, 30.000, '2025-06-01',
+   'Ajuste 2025 producto 14', 'seed_02', '2025-06-01', NULL),
+  (15, 29.000, 30.000, '2023-01-01',
+   'Ajuste inicial producto 15', 'seed_02', '2023-01-01', '2024-11-18'),
+  (15, 30.000, 30.500, '2024-11-19',
+   'Ajuste pre-2025 producto 15', 'seed_02', '2024-11-19', '2025-05-31'),
+  (15, 30.500, 31.000, '2025-06-01',
+   'Ajuste 2025 producto 15', 'seed_02', '2025-06-01', NULL),
+  (16, 30.000, 31.000, '2023-01-01',
+   'Ajuste inicial producto 16', 'seed_02', '2023-01-01', '2024-11-18'),
+  (16, 31.000, 31.500, '2024-11-19',
+   'Ajuste pre-2025 producto 16', 'seed_02', '2024-11-19', '2025-05-31'),
+  (16, 31.500, 32.000, '2025-06-01',
+   'Ajuste 2025 producto 16', 'seed_02', '2025-06-01', NULL),
+  (17, 31.000, 32.000, '2023-01-01',
+   'Ajuste inicial producto 17', 'seed_02', '2023-01-01', '2024-11-18'),
+  (17, 32.000, 32.500, '2024-11-19',
+   'Ajuste pre-2025 producto 17', 'seed_02', '2024-11-19', '2025-05-31'),
+  (17, 32.500, 33.000, '2025-06-01',
+   'Ajuste 2025 producto 17', 'seed_02', '2025-06-01', NULL),
+  (18, 32.000, 33.000, '2023-01-01',
+   'Ajuste inicial producto 18', 'seed_02', '2023-01-01', '2024-11-18'),
+  (18, 33.000, 33.500, '2024-11-19',
+   'Ajuste pre-2025 producto 18', 'seed_02', '2024-11-19', '2025-05-31'),
+  (18, 33.500, 34.000, '2025-06-01',
+   'Ajuste 2025 producto 18', 'seed_02', '2025-06-01', NULL),
+  (19, 33.000, 34.000, '2023-01-01',
+   'Ajuste inicial producto 19', 'seed_02', '2023-01-01', '2024-11-18'),
+  (19, 34.000, 34.500, '2024-11-19',
+   'Ajuste pre-2025 producto 19', 'seed_02', '2024-11-19', '2025-05-31'),
+  (19, 34.500, 35.000, '2025-06-01',
+   'Ajuste 2025 producto 19', 'seed_02', '2025-06-01', NULL),
+  (20, 34.000, 35.000, '2023-01-01',
+   'Ajuste inicial producto 20', 'seed_02', '2023-01-01', '2024-11-18'),
+  (20, 35.000, 35.500, '2024-11-19',
+   'Ajuste pre-2025 producto 20', 'seed_02', '2024-11-19', '2025-05-31'),
+  (20, 35.500, 36.000, '2025-06-01',
+   'Ajuste 2025 producto 20', 'seed_02', '2025-06-01', NULL);
+
+-- garantes
+INSERT INTO garantes
+  (nombre, apellido, dni, email, telefono, direccion, ingresos_declarados, relacion_cliente)
+VALUES
+  ('Javier',     'Paredes',       '30000001', 'javier.paredes@example.com',     '370400001', 'Av. Corrientes 1200',        380000.00, 'Padre'),
+  ('Mariela',    'Benitez',       '30000002', 'mariela.benitez@example.com',    '370400002', 'San Martin 845',             420000.00, 'Madre'),
+  ('Sergio',     'Lopez',         '30000003', 'sergio.lopez@example.com',       '370400003', 'Rivadavia 1020',             510000.00, 'Hermano'),
+  ('Patricia',   'Gimenez',       '30000004', 'patricia.gimenez@example.com',   '370400004', 'Mitre 550',                  295000.00, 'Tia'),
+  ('Rodrigo',    'Fernandez',     '30000005', 'rodrigo.fernandez@example.com',  '370400005', 'Belgrano 210',               610000.00, 'Amigo'),
+  ('Luciana',    'Soto',          '30000006', 'luciana.soto@example.com',       '370400006', 'Entre Rios 900',             360000.00, 'Hermana'),
+  ('Gustavo',    'Ramos',         '30000007', 'gustavo.ramos@example.com',      '370400007', 'Catamarca 430',              455000.00, 'Tio'),
+  ('Vanesa',     'Luna',          '30000008', 'vanesa.luna@example.com',        '370400008', 'Tucuman 670',                325000.00, 'Prima'),
+  ('Marcos',     'Peralta',       '30000009', 'marcos.peralta@example.com',     '370400009', 'Chile 150',                  540000.00, 'Socio'),
+  ('Noelia',     'Rodriguez',     '30000010', 'noelia.rodriguez@example.com',   '370400010', 'España 400',                 390000.00, 'Conyuge'),
+  ('Alejandro',  'Sanchez',       '30000011', 'ale.sanchez@example.com',        '370400011', 'Brasil 220',                 610000.00, 'Padre'),
+  ('Carolina',   'Villalba',      '30000012', 'caro.villalba@example.com',      '370400012', 'Italia 310',                 280000.00, 'Amiga'),
+  ('Hernan',     'Farias',        '30000013', 'hernan.farias@example.com',      '370400013', 'Colon 980',                  470000.00, 'Hermano'),
+  ('Rocio',      'Acosta',        '30000014', 'rocio.acosta@example.com',       '370400014', 'Ayacucho 300',               365000.00, 'Hermana'),
+  ('Martin',     'Silva',         '30000015', 'martin.silva@example.com',       '370400015', 'Santa Fe 1234',              530000.00, 'Amigo'),
+  ('Daniela',    'Ortega',        '30000016', 'daniela.ortega@example.com',     '370400016', 'Jujuy 640',                  410000.00, 'Conyuge'),
+  ('Pablo',      'Riquelme',      '30000017', 'pablo.riquelme@example.com',     '370400017', 'Salta 455',                  590000.00, 'Padre'),
+  ('Natalia',    'Mendoza',       '30000018', 'natalia.mendoza@example.com',    '370400018', 'Formosa 312',                370000.00, 'Madre'),
+  ('Fernando',   'Nuñez',         '30000019', 'fernando.nunez@example.com',     '370400019', 'Cordoba 715',                450000.00, 'Tio'),
+  ('Eliana',     'Lopez',         '30000020', 'eliana.lopez@example.com',       '370400020', 'Santiago 520',               335000.00, 'Prima'),
+  ('Diego',      'Avila',         '30000021', 'diego.avila@example.com',        '370400021', 'San Juan 280',               510000.00, 'Amigo'),
+  ('Florencia',  'Benitez',       '30000022', 'flor.benitez@example.com',       '370400022', 'Lavalle 880',                395000.00, 'Hermana'),
+  ('Claudio',    'Godoy',         '30000023', 'claudio.godoy@example.com',      '370400023', 'Moreno 640',                 630000.00, 'Socio'),
+  ('Ayelen',     'Paz',           '30000024', 'ayelen.paz@example.com',         '370400024', 'Brasil 102',                 320000.00, 'Amiga'),
+  ('Santiago',   'Herrera',       '30000025', 'santiago.herrera@example.com',   '370400025', 'Francia 330',                555000.00, 'Hermano'),
+  ('Daiana',     'Romero',        '30000026', 'daiana.romero@example.com',      '370400026', 'Pringles 740',               360000.00, 'Conyuge'),
+  ('Leandro',    'Maidana',       '30000027', 'leandro.maidana@example.com',    '370400027', 'Mendoza 930',                485000.00, 'Padre'),
+  ('Soledad',    'Castro',        '30000028', 'sole.castro@example.com',        '370400028', 'Ayolas 210',                 305000.00, 'Madre'),
+  ('Nicolas',    'Vega',          '30000029', 'nicolas.vega@example.com',       '370400029', 'Patricias 500',              575000.00, 'Amigo'),
+  ('Julieta',    'Rios',          '30000030', 'julieta.rios@example.com',       '370400030', 'Salta 210',                  390000.00, 'Prima'),
+  ('Matias',     'Cordoba',       '30000031', 'matias.cordoba@example.com',     '370400031', 'Sarmiento 650',              620000.00, 'Hermano'),
+  ('Agustina',   'Ojeda',         '30000032', 'agustina.ojeda@example.com',     '370400032', 'Entre Rios 120',             340000.00, 'Hermana'),
+  ('German',     'Acosta',        '30000033', 'german.acosta@example.com',      '370400033', 'Rioja 430',                  460000.00, 'Tio'),
+  ('Milagros',   'Suarez',        '30000034', 'milagros.suarez@example.com',    '370400034', 'Misiones 220',               310000.00, 'Amiga'),
+  ('Franco',     'Martinez',      '30000035', 'franco.martinez@example.com',    '370400035', 'San Luis 300',               590000.00, 'Socio'),
+  ('Camila',     'Benegas',       '30000036', 'camila.benegas@example.com',     '370400036', 'Chaco 505',                  355000.00, 'Conyuge'),
+  ('Ezequiel',   'Ruiz',          '30000037', 'eze.ruiz@example.com',           '370400037', 'Corrientes 1330',            530000.00, 'Padre'),
+  ('Belen',      'Martinez',      '30000038', 'belen.martinez@example.com',     '370400038', 'Buenos Aires 480',           375000.00, 'Madre'),
+  ('Maximiliano','Lopez',         '30000039', 'maxi.lopez@example.com',         '370400039', 'San Martin 220',             605000.00, 'Hermano'),
+  ('Carla',      'Alvarez',       '30000040', 'carla.alvarez@example.com',      '370400040', 'Mitre 720',                  345000.00, 'Hermana'),
+  ('Bruno',      'Pereyra',       '30000041', 'bruno.pereyra@example.com',      '370400041', 'Belgrano 930',               455000.00, 'Amigo'),
+  ('Melina',     'Cardozo',       '30000042', 'melina.cardozo@example.com',     '370400042', 'Catamarca 660',              315000.00, 'Prima'),
+  ('Facundo',    'Gomez',         '30000043', 'facu.gomez@example.com',         '370400043', 'Tucuman 340',                585000.00, 'Socio'),
+  ('Antonella',  'Ruiz Diaz',     '30000044', 'anto.ruizd@example.com',         '370400044', 'Bolivia 230',                365000.00, 'Conyuge'),
+  ('Lucas',      'Morales',       '30000045', 'lucas.morales@example.com',      '370400045', 'España 750',                 525000.00, 'Padre'),
+  ('Gisela',     'Acuña',         '30000046', 'gisela.acuna@example.com',       '370400046', 'Italia 580',                 335000.00, 'Madre'),
+  ('Ignacio',    'Chavez',        '30000047', 'ignacio.chavez@example.com',     '370400047', 'Francia 910',                610000.00, 'Tio'),
+  ('Yesica',     'Molina',        '30000048', 'yesica.molina@example.com',      '370400048', 'Colombia 310',               345000.00, 'Prima'),
+  ('Ramiro',     'Santana',       '30000049', 'ramiro.santana@example.com',     '370400049', 'Mexico 410',                 475000.00, 'Amigo'),
+  ('Aylen',      'Galeano',       '30000050', 'aylen.galeano@example.com',      '370400050', 'Peru 520',                   305000.00, 'Hermana'),
+  ('Cristian',   'Villordo',      '30000051', 'cristian.villordo@example.com',  '370400051', 'Uruguay 260',                525000.00, 'Hermano'),
+  ('Paula',      'Toledo',        '30000052', 'paula.toledo@example.com',       '370400052', 'Chile 640',                  360000.00, 'Conyuge'),
+  ('Federico',   'Soria',         '30000053', 'fede.soria@example.com',         '370400053', 'San Juan 840',               540000.00, 'Padre'),
+  ('Brenda',     'Ayala',         '30000054', 'brenda.ayala@example.com',       '370400054', 'Cordoba 1025',               320000.00, 'Madre'),
+  ('Jonatan',    'Fleck',         '30000055', 'jonatan.fleck@example.com',      '370400055', 'Misiones 300',               580000.00, 'Socio'),
+  ('Micaela',    'Lescano',       '30000056', 'mica.lescano@example.com',       '370400056', 'San Lorenzo 200',            350000.00, 'Amiga'),
+  ('Tomas',      'Rinaldi',       '30000057', 'tomas.rinaldi@example.com',      '370400057', 'Av. Uruguay 900',            495000.00, 'Amigo'),
+  ('Valentina',  'Acero',         '30000058', 'valentina.acero@example.com',    '370400058', 'Av. Lopez y Planes 1100',    355000.00, 'Prima'),
+  ('Sebastian',  'Maidana',       '30000059', 'sebastian.maidana@example.com',  '370400059', 'Las Heras 320',              565000.00, 'Hermano'),
+  ('Carolina',   'Riquelme',      '30000060', 'carolina.riquelme@example.com',  '370400060', 'Roque Saenz Peña 500',       380000.00, 'Conyuge');
+
+
+-- solicitudes_credito
+INSERT INTO solicitudes_credito
+  (id_cliente, id_sucursal, id_empleado_gestor, id_producto,
+   monto_solicitado, plazo_meses, destino_credito,
+   fecha_solicitud, id_estado, puntaje_riesgo,
+   id_analista, observaciones, fecha_evaluacion)
+VALUES
+  (1,  1,  3,  5,   250000.00, 24, 'Reparacion de vivienda',
+   '2023-01-10 10:15:00', 1, 620, NULL,
+   'Cliente con ingreso estable, pendiente de documentacion.', NULL),
+  (2,  2,  4, 12,   180000.00, 18, 'Compra de vehiculo usado',
+   '2023-02-05 11:20:00', 2, 580, 4,
+   'En revision por historial crediticio intermedio.', '2023-02-12 09:00:00'),
+  (3,  3,  5, 20,   320000.00, 36, 'Consolidacion de deudas',
+   '2023-03-08 14:30:00', 3, 710, 14,
+   'Aprobado con condiciones: mantener debito automatico.', '2023-03-15 10:00:00'),
+  (4,  4,  6,  8,   150000.00, 12, 'Gastos medicos',
+   '2023-03-20 09:50:00', 4, 540, 24,
+   'Rechazado por ingresos insuficientes declarados.', '2023-03-25 16:20:00'),
+  (5,  5,  7, 25,   400000.00, 48, 'Refaccion integral del hogar',
+   '2023-04-02 08:45:00', 3, 760, 4,
+   'Buen perfil, antigüedad laboral alta.', '2023-04-10 12:00:00'),
+  (6,  6,  8, 18,   220000.00, 24, 'Equipamiento para negocio',
+   '2023-04-18 13:10:00', 1, 600, NULL,
+   'Pendiente de verificacion de garante.', NULL),
+  (7,  7,  9, 33,   120000.00, 18, 'Viaje familiar',
+   '2023-05-01 17:25:00', 2, 590, 24,
+   'Se solicita refuerzo de documentacion laboral.', '2023-05-08 11:40:00'),
+  (8,  8, 10, 40,   280000.00, 30, 'Compra de movilidad para trabajo',
+   '2023-05-16 09:35:00', 3, 700, 34,
+   'Aprobado con tasa estandar del producto.', '2023-05-22 15:00:00'),
+  (9,  9, 11,  2,   900000.00, 60, 'Compra de vivienda propia',
+   '2023-06-03 10:05:00', 3, 780, 44,
+   'Hipotecario aprobado, requiere firma de escritura.', '2023-06-20 09:30:00'),
+  (10,10, 12, 28,    90000.00, 12, 'Estudios universitarios',
+   '2023-06-25 16:40:00', 4, 520, 44,
+   'Rechazado por alto endeudamiento previo.', '2023-06-30 10:10:00'),
+  (11, 1, 13, 15,   260000.00, 24, 'Remodelacion de cocina',
+   '2023-07-07 11:00:00', 1, 630, NULL,
+   'Pendiente de evaluacion de analista.', NULL),
+  (12, 2, 14,  9,   145000.00, 18, 'Gastos medicos imprevistos',
+   '2023-07-19 09:20:00', 2, 575, 4,
+   'Analista solicita informe adicional de garantes.', '2023-07-26 09:10:00'),
+  (13, 3, 15, 22,   310000.00, 36, 'Ampliacion del local comercial',
+   '2023-08-02 13:45:00', 3, 745, 14,
+   'Aprobado por buen flujo de caja declarado.', '2023-08-10 12:30:00'),
+  (14, 4, 16, 35,   130000.00, 18, 'Viaje de estudios',
+   '2023-08-21 10:50:00', 4, 510, 24,
+   'Rechazo por inestabilidad laboral reciente.', '2023-08-28 14:20:00'),
+  (15, 5, 17, 48,   200000.00, 24, 'Compra de equipamiento informatico',
+   '2023-09-05 15:30:00', 3, 695, 44,
+   'Aprobado con seguimiento trimestral.', '2023-09-12 09:45:00'),
+  (16, 6, 18,  6,   270000.00, 30, 'Consolidacion de tarjetas',
+   '2024-01-09 09:10:00', 1, 615, NULL,
+   'Cliente solicita unificar deudas en una sola cuota.', NULL),
+  (17, 7, 19, 13,   325000.00, 36, 'Refaccion integral del hogar',
+   '2024-01-23 11:55:00', 2, 585, 44,
+   'En revision, se analiza capacidad de pago.', '2024-01-30 16:00:00'),
+  (18, 8, 20, 21,   150000.00, 18, 'Gastos medicos',
+   '2024-02-04 08:35:00', 3, 730, 4,
+   'Buen historial, aprobado sin condiciones extra.', '2024-02-11 10:25:00'),
+  (19, 9, 21, 30,   950000.00, 72, 'Compra de vivienda propia',
+   '2024-02-20 10:20:00', 3, 790, 14,
+   'Aprobado credito hipotecario con tasa preferencial.', '2024-03-05 11:00:00'),
+  (20,10, 22, 44,   220000.00, 24, 'Compra de vehiculo usado',
+   '2024-03-03 14:45:00', 4, 535, 24,
+   'Rechazado por informacion laboral inconsistente.', '2024-03-10 09:10:00'),
+  (21, 1, 23, 10,   195000.00, 18, 'Estudios universitarios',
+   '2024-03-18 09:05:00', 1, 605, NULL,
+   'Pendiente: se requiere constancia actual de alumno.', NULL),
+  (22, 2, 24, 17,   340000.00, 36, 'Remodelacion de baño y cocina',
+   '2024-04-01 10:30:00', 2, 595, 44,
+   'Se solicita segunda opinion de analista senior.', '2024-04-08 15:20:00'),
+  (23, 3, 25, 24,   260000.00, 30, 'Ampliacion del local comercial',
+   '2024-04-16 13:00:00', 3, 755, 44,
+   'Aprobado, con seguimiento semestral.', '2024-04-24 09:40:00'),
+  (24, 4, 26, 32,   140000.00, 18, 'Reparacion de vehiculo',
+   '2024-04-29 16:25:00', 3, 680, 4,
+   'Perfil medio, aprobado con tope de monto.', '2024-05-06 11:15:00'),
+  (25, 5, 27, 39,   230000.00, 24, 'Viaje familiar',
+   '2024-05-12 09:50:00', 4, 525, 14,
+   'Rechazado, carga actual de deudas elevada.', '2024-05-20 10:10:00'),
+  (26, 6, 28, 47,   210000.00, 24, 'Compra de equipamiento informatico',
+   '2024-06-01 12:15:00', 1, 610, NULL,
+   'Cliente solicita actualizacion de limite futuro.', NULL),
+  (27, 7, 29,  1,   280000.00, 30, 'Consolidacion de deudas',
+   '2024-06-18 08:45:00', 2, 605, 24,
+   'En revision por variacion reciente de ingresos.', '2024-06-25 14:00:00'),
+  (28, 8, 30, 14,   360000.00, 36, 'Refaccion integral del hogar',
+   '2024-07-03 10:10:00', 3, 745, 34,
+   'Aprobado, garantes solidos.', '2024-07-11 10:55:00'),
+  (29, 9, 31, 27,   160000.00, 18, 'Gastos medicos',
+   '2024-07-20 11:40:00', 3, 710, 44,
+   'Urgencia medica, aprobado con prioridad.', '2024-07-25 09:30:00'),
+  (30,10, 32, 38,   195000.00, 18, 'Viaje de estudios',
+   '2024-08-05 15:05:00', 4, 515, 4,
+   'Rechazado por falta de antigüedad laboral.', '2024-08-12 10:15:00'),
+  (31, 1, 33,  7,   245000.00, 24, 'Reparacion de vivienda',
+   '2025-01-10 09:00:00', 1, 635, NULL,
+   'Pendiente: espera informe de veraz actualizado.', NULL),
+  (32, 2, 34, 16,   305000.00, 30, 'Ampliacion de vivienda',
+   '2025-01-22 11:20:00', 2, 600, 14,
+   'En revision por leve sobreendeudamiento.', '2025-01-29 14:50:00'),
+  (33, 3, 35, 23,   330000.00, 36, 'Ampliacion del local comercial',
+   '2025-02-03 10:45:00', 3, 765, 24,
+   'Aprobado, cliente con historial intachable.', '2025-02-11 09:35:00'),
+  (34, 4, 36, 29,   980000.00, 72, 'Compra de vivienda propia',
+   '2025-02-18 15:10:00', 3, 795, 44,
+   'Aprobado, se firma hipoteca en 15 dias.', '2025-02-28 12:00:00'),
+  (35, 5, 37, 36,   210000.00, 24, 'Compra de vehiculo usado',
+   '2025-03-01 08:50:00', 4, 530, 44,
+   'Rechazado por inestabilidad de ingresos.', '2025-03-07 09:25:00'),
+  (36, 6, 38, 43,   155000.00, 18, 'Estudios universitarios',
+   '2025-03-15 09:30:00', 1, 620, NULL,
+   'Pendiente, falta comprobante de alumno regular.', NULL),
+  (37, 7, 39, 50,   275000.00, 30, 'Refaccion integral del hogar',
+   '2025-03-28 13:20:00', 2, 595, 4,
+   'En revision, se evaluan garantes adicionales.', '2025-04-04 11:10:00'),
+  (38, 8, 40,  3,   295000.00, 30, 'Consolidacion de tarjetas',
+   '2025-04-08 10:05:00', 3, 740, 14,
+   'Aprobado, con obligacion de cancelar plasticos.', '2025-04-16 09:45:00'),
+  (39, 9, 41, 11,   180000.00, 18, 'Gastos medicos',
+   '2025-04-20 14:40:00', 3, 715, 24,
+   'Aprobado por emergencia medica documentada.', '2025-04-27 10:20:00'),
+  (40,10, 42, 19,   225000.00, 24, 'Compra de equipamiento informatico',
+   '2025-05-02 09:55:00', 4, 505, 34,
+   'Rechazado por incumplimientos previos.', '2025-05-09 11:30:00'),
+  (41, 1, 43, 26,   245000.00, 24, 'Remodelacion de cocina',
+   '2025-05-14 08:40:00', 1, 640, NULL,
+   'Pendiente: se revisan extractos bancarios.', NULL),
+  (42, 2, 44, 31,   310000.00, 30, 'Ampliacion del local comercial',
+   '2025-05-27 11:25:00', 2, 605, 44,
+   'En revision por variacion de ingresos reciente.', '2025-06-03 15:10:00'),
+  (43, 3, 45, 37,   165000.00, 18, 'Viaje familiar',
+   '2025-06-05 10:15:00', 3, 705, 4,
+   'Aprobado, cliente con comportamiento de pago bueno.', '2025-06-12 09:05:00'),
+  (44, 4, 46, 42,   205000.00, 24, 'Reparacion de vehiculo',
+   '2025-06-18 09:50:00', 3, 725, 14,
+   'Aprobado, tasas alineadas al producto.', '2025-06-25 10:40:00'),
+  (45, 5, 47, 49,   190000.00, 18, 'Viaje de estudios',
+   '2025-07-01 16:00:00', 4, 510, 24,
+   'Rechazado, cliente presenta multiples consultas recientes.', '2025-07-08 11:20:00'),
+  (46, 6, 48,  4,   255000.00, 24, 'Reparacion de vivienda',
+   '2025-07-15 09:05:00', 1, 625, NULL,
+   'Pendiente, se solicita alta de garante adicional.', NULL),
+  (47, 7, 49,  8,   335000.00, 30, 'Ampliacion de vivienda',
+   '2025-07-28 11:45:00', 2, 590, 34,
+   'En revision, se evalua nivel de endeudamiento total.', '2025-08-04 15:30:00'),
+  (48, 8, 50, 22,   360000.00, 36, 'Ampliacion del local comercial',
+   '2025-08-10 10:20:00', 3, 750, 44,
+   'Aprobado, cliente PyME con buena trayectoria.', '2025-08-18 09:50:00'),
+  (49, 9, 51, 34,  1000000.00, 72, 'Compra de vivienda propia',
+   '2025-08-24 14:55:00', 3, 800, 4,
+   'Aprobado con hipoteca de primera vivienda.', '2025-09-02 11:10:00'),
+  (50,10, 52, 41,   215000.00, 24, 'Compra de vehiculo usado',
+   '2025-09-06 09:25:00', 4, 535, 14,
+   'Rechazado, sin estabilidad laboral suficiente.', '2025-09-13 10:05:00'),
+  (51, 1, 53, 46,   185000.00, 18, 'Estudios universitarios',
+   '2025-09-19 10:00:00', 1, 630, NULL,
+   'Pendiente, se aguarda certificacion de ingresos.', NULL),
+  (52, 2, 54,  5,   265000.00, 24, 'Consolidacion de deudas',
+   '2025-10-01 11:35:00', 2, 600, 24,
+   'En revision, se analiza riesgo de sobreendeudamiento.', '2025-10-08 09:45:00'),
+  (53, 3, 55, 12,   295000.00, 30, 'Refaccion integral del hogar',
+   '2025-10-15 09:20:00', 3, 745, 34,
+   'Aprobado, con sugerencia de seguimiento anual.', '2025-10-23 10:30:00'),
+  (54, 4, 56, 19,   155000.00, 18, 'Gastos medicos',
+   '2025-10-28 08:55:00', 3, 720, 44,
+   'Aprobado, destino prioritario de salud.', '2025-11-04 09:40:00'),
+  (55, 5, 57, 26,   205000.00, 24, 'Compra de equipamiento informatico',
+   '2025-11-05 15:15:00', 4, 520, 4,
+   'Rechazado, cliente con multiples atrasos recientes.', '2025-11-12 11:25:00'),
+  (56, 6, 58, 33,   230000.00, 24, 'Remodelacion de cocina',
+   '2025-11-10 09:35:00', 1, 640, NULL,
+   'Pendiente, en espera de informe de garante.', NULL),
+  (57, 7, 59, 45,   290000.00, 30, 'Ampliacion de vivienda',
+   '2025-11-14 10:50:00', 2, 605, 14,
+   'En revision, se verifica consistencia de ingresos.', '2025-11-19 09:30:00'),
+  (58, 8, 60, 51,   320000.00, 36, 'Ampliacion del local comercial',
+   '2025-11-17 14:05:00', 3, 760, 24,
+   'Aprobado, cliente con buen comportamiento historico.', '2025-11-24 10:10:00'),
+  (59, 9,  2, 27,   170000.00, 18, 'Viaje familiar',
+   '2025-11-18 09:45:00', 3, 710, 34,
+   'Aprobado, se recomienda monitoreo de nuevas deudas.', '2025-11-25 11:00:00'),
+  (60,10,  4, 39,   195000.00, 18, 'Viaje de estudios',
+   '2025-11-19 08:40:00', 4, 515, 44,
+   'Rechazado, score crediticio por debajo del minimo.', '2025-11-26 09:20:00');
+
+
+-- solicitudes_garantes
+INSERT INTO solicitudes_garantes
+  (id_solicitud, id_garante, fecha_vinculacion)
+VALUES
+  (1,  1,  '2023-01-12 10:00:00'),
+  (2,  2,  '2023-02-07 10:00:00'),
+  (3,  3,  '2023-03-10 10:00:00'),
+  (4,  4,  '2023-03-22 10:00:00'),
+  (5,  5,  '2023-04-04 10:00:00'),
+  (6,  6,  '2023-04-20 10:00:00'),
+  (7,  7,  '2023-05-03 10:00:00'),
+  (8,  8,  '2023-05-18 10:00:00'),
+  (9,  9,  '2023-06-05 10:00:00'),
+  (10,10, '2023-06-27 10:00:00'),
+  (11,11, '2023-07-09 10:00:00'),
+  (12,12, '2023-07-21 10:00:00'),
+  (13,13, '2023-08-04 10:00:00'),
+  (14,14, '2023-08-23 10:00:00'),
+  (15,15, '2023-09-07 10:00:00'),
+  (16,16, '2024-01-11 10:00:00'),
+  (17,17, '2024-01-25 10:00:00'),
+  (18,18, '2024-02-06 10:00:00'),
+  (19,19, '2024-02-22 10:00:00'),
+  (20,20, '2024-03-05 10:00:00'),
+  (21,21, '2024-03-20 10:00:00'),
+  (22,22, '2024-04-03 10:00:00'),
+  (23,23, '2024-04-18 10:00:00'),
+  (24,24, '2024-05-01 10:00:00'),
+  (25,25, '2024-05-14 10:00:00'),
+  (26,26, '2024-06-03 10:00:00'),
+  (27,27, '2024-06-20 10:00:00'),
+  (28,28, '2024-07-05 10:00:00'),
+  (29,29, '2024-07-22 10:00:00'),
+  (30,30, '2024-08-07 10:00:00'),
+  (31,31, '2025-01-12 10:00:00'),
+  (32,32, '2025-01-24 10:00:00'),
+  (33,33, '2025-02-05 10:00:00'),
+  (34,34, '2025-02-20 10:00:00'),
+  (35,35, '2025-03-03 10:00:00'),
+  (36,36, '2025-03-17 10:00:00'),
+  (37,37, '2025-03-30 10:00:00'),
+  (38,38, '2025-04-10 10:00:00'),
+  (39,39, '2025-04-22 10:00:00'),
+  (40,40, '2025-05-04 10:00:00'),
+  (41,41, '2025-05-16 10:00:00'),
+  (42,42, '2025-05-29 10:00:00'),
+  (43,43, '2025-06-07 10:00:00'),
+  (44,44, '2025-06-20 10:00:00'),
+  (45,45, '2025-07-03 10:00:00'),
+  (46,46, '2025-07-17 10:00:00'),
+  (47,47, '2025-07-30 10:00:00'),
+  (48,48, '2025-08-12 10:00:00'),
+  (49,49, '2025-08-26 10:00:00'),
+  (50,50, '2025-09-08 10:00:00'),
+  (51,51, '2025-09-21 10:00:00'),
+  (52,52, '2025-10-03 10:00:00'),
+  (53,53, '2025-10-17 10:00:00'),
+  (54,54, '2025-10-30 10:00:00'),
+  (55,55, '2025-11-07 10:00:00'),
+  (56,56, '2025-11-11 10:00:00'),
+  (57,57, '2025-11-15 10:00:00'),
+  (58,58, '2025-11-18 10:00:00'),
+  (59,59, '2025-11-19 10:05:00'),
+  (60,60, '2025-11-19 10:10:00');
+
+-- creditos
+INSERT INTO creditos
+  (id_solicitud, id_cliente, id_producto,
+   monto_otorgado, tasa_interes, plazo_meses,
+   fecha_inicio, fecha_finalizacion,
+   id_estado, id_credito_refinanciado)
+VALUES
+  ( 1,  1,  1, 250000.00, 38.500, 24, '2023-02-01', '2025-02-01', 1, NULL),
+  ( 2,  2,  2, 180000.00, 37.000, 24, '2023-02-01', '2025-02-01', 1, NULL),
+  ( 3,  3,  3, 320000.00, 39.000, 24, '2023-02-01', '2025-02-01', 1, NULL),
+  ( 4,  4,  4, 150000.00, 36.500, 24, '2023-02-01', '2025-02-01', 1, NULL),
+  ( 5,  5,  5, 400000.00, 40.000, 24, '2023-02-01', '2025-02-01', 1, NULL),
+  ( 6,  6,  6, 220000.00, 37.750, 24, '2023-02-01', '2025-02-01', 1, NULL),
+  ( 7,  7,  7, 120000.00, 35.500, 24, '2023-02-01', '2025-02-01', 1, NULL),
+  ( 8,  8,  8, 280000.00, 38.250, 24, '2023-02-01', '2025-02-01', 1, NULL),
+  ( 9,  9,  9, 900000.00, 41.000, 24, '2023-02-01', '2025-02-01', 1, NULL),
+  (10, 10, 10,  90000.00, 34.750, 24, '2023-02-01', '2025-02-01', 1, NULL),
+  (11, 11, 11, 260000.00, 38.000, 36, '2023-02-01', '2026-02-01', 1, NULL),
+  (12, 12, 12, 145000.00, 36.250, 36, '2023-02-01', '2026-02-01', 1, NULL),
+  (13, 13, 13, 310000.00, 39.250, 36, '2023-02-01', '2026-02-01', 1, NULL),
+  (14, 14, 14, 130000.00, 35.250, 36, '2023-02-01', '2026-02-01', 1, NULL),
+  (15, 15, 15, 200000.00, 37.500, 36, '2023-02-01', '2026-02-01', 1, NULL),
+  (16, 16, 16, 270000.00, 38.750, 36, '2023-02-01', '2026-02-01', 1, NULL),
+  (17, 17, 17, 325000.00, 39.750, 36, '2023-02-01', '2026-02-01', 1, NULL),
+  (18, 18, 18, 150000.00, 36.000, 36, '2023-02-01', '2026-02-01', 1, NULL),
+  (19, 19, 19, 950000.00, 42.000, 36, '2023-02-01', '2026-02-01', 1, NULL),
+  (20, 20, 20, 220000.00, 37.250, 36, '2023-02-01', '2026-02-01', 1, NULL),
+  (21, 21,  1, 195000.00, 40.000, 48, '2024-02-01', '2028-02-01', 2, NULL),
+  (22, 22,  2, 340000.00, 41.250, 48, '2024-02-01', '2028-02-01', 2, NULL),
+  (23, 23,  3, 260000.00, 39.500, 48, '2024-02-01', '2028-02-01', 2, NULL),
+  (24, 24,  4, 140000.00, 38.750, 48, '2024-02-01', '2028-02-01', 2, NULL),
+  (25, 25,  5, 230000.00, 40.500, 48, '2024-02-01', '2028-02-01', 2, NULL),
+  (26, 26,  6, 210000.00, 39.750, 48, '2024-02-01', '2028-02-01', 2, NULL),
+  (27, 27,  7, 280000.00, 41.750, 48, '2024-02-01', '2028-02-01', 2, NULL),
+  (28, 28,  8, 360000.00, 42.250, 48, '2024-02-01', '2028-02-01', 2, NULL),
+  (29, 29,  9, 160000.00, 38.250, 48, '2024-02-01', '2028-02-01', 2, NULL),
+  (30, 30, 10, 195000.00, 39.250, 48, '2024-02-01', '2028-02-01', 2, NULL),
+  (31, 31, 11, 245000.00, 35.000, 60, '2024-02-01', '2029-02-01', 4, NULL),
+  (32, 32, 12, 305000.00, 36.250, 60, '2024-02-01', '2029-02-01', 4, NULL),
+  (33, 33, 13, 330000.00, 37.500, 60, '2024-02-01', '2029-02-01', 4, NULL),
+  (34, 34, 14, 980000.00, 43.000, 60, '2024-02-01', '2029-02-01', 4, NULL),
+  (35, 35, 15, 210000.00, 35.750, 60, '2024-02-01', '2029-02-01', 4, NULL),
+  (36, 36, 16, 155000.00, 34.500, 60, '2024-02-01', '2029-02-01', 4, NULL),
+  (37, 37, 17, 275000.00, 36.750, 60, '2024-02-01', '2029-02-01', 4, NULL),
+  (38, 38, 18, 295000.00, 37.250, 60, '2024-02-01', '2029-02-01', 4, NULL),
+  (39, 39, 19, 180000.00, 39.000, 60, '2024-02-01', '2029-02-01', 3, NULL),
+  (40, 40, 20, 225000.00, 40.250, 60, '2024-02-01', '2029-02-01', 3, NULL),
+  (41, 41,  1, 245000.00, 38.750, 60, '2025-02-01', '2030-02-01', 3, NULL),
+  (42, 42,  2, 310000.00, 39.750, 60, '2025-02-01', '2030-02-01', 3, NULL),
+  (43, 43,  3, 165000.00, 37.250, 60, '2025-02-01', '2030-02-01', 3, NULL),
+  (44, 44,  4, 205000.00, 38.000, 60, '2025-02-01', '2030-02-01', 3, NULL),
+  (45, 45,  5, 190000.00, 37.750, 60, '2025-02-01', '2030-02-01', 3, NULL),
+  (46, 46,  6, 255000.00, 39.500, 24, '2025-02-01', '2027-02-01', 5, NULL),
+  (47, 47,  7, 335000.00, 40.250, 24, '2025-02-01', '2027-02-01', 5, NULL),
+  (48, 48,  8, 360000.00, 41.500, 24, '2025-02-01', '2027-02-01', 5, NULL),
+  (49, 49,  9,1000000.00, 44.000, 24, '2025-02-01', '2027-02-01', 5, NULL),
+  (50, 50, 10, 215000.00, 39.750, 24, '2025-02-01', '2027-02-01', 5, NULL),
+  (51, 51, 11, 185000.00, 38.500, 36, '2025-02-01', '2028-02-01', 1, 39),
+  (52, 52, 12, 265000.00, 39.250, 36, '2025-02-01', '2028-02-01', 1, 40),
+  (53, 53, 13, 295000.00, 40.000, 36, '2025-02-01', '2028-02-01', 1, 41),
+  (54, 54, 14, 155000.00, 37.750, 36, '2025-02-01', '2028-02-01', 1, 42),
+  (55, 55, 15, 205000.00, 38.250, 36, '2025-02-01', '2028-02-01', 1, 43),
+  (56, 56, 16, 230000.00, 39.000, 36, '2025-02-01', '2028-02-01', 1, 44),
+  (57, 57, 17, 290000.00, 40.500, 36, '2025-02-01', '2028-02-01', 1, 45),
+  (58, 58, 18, 320000.00, 41.000, 36, '2025-02-01', '2028-02-01', 1, NULL),
+  (59, 59, 19, 170000.00, 37.500, 36, '2025-02-01', '2028-02-01', 1, NULL),
+  (60, 60, 20, 195000.00, 38.000, 36, '2025-02-01', '2028-02-01', 1, NULL);
+
+
+-- cuotas
+SET @id_cuo_pend   = (SELECT id FROM estado_cuota WHERE codigo='Pendiente');
+SET @id_cuo_pag    = (SELECT id FROM estado_cuota WHERE codigo='Pagada');
+SET @id_cuo_venc   = (SELECT id FROM estado_cuota WHERE codigo='Vencida');
+SET @id_cuo_pagmor = (SELECT id FROM estado_cuota WHERE codigo='Pagada_Con_Mora');
+
+INSERT INTO cuotas
+  (id_credito, numero_cuota, fecha_vencimiento,
+   monto_cuota, monto_capital, monto_interes,
+   saldo_pendiente, monto_pagado, id_estado)
+VALUES
+  ( 1, 1, '2023-06-15', 10000.00,  9000.00, 3000.00,     0.00, 10000.00, @id_cuo_pag),
+  ( 2, 1, '2023-06-15', 10000.00,  9000.00, 3000.00,     0.00, 10000.00, @id_cuo_pag),
+  ( 3, 1, '2023-06-15', 10000.00,  9000.00, 3000.00,     0.00, 10000.00, @id_cuo_pag),
+  ( 4, 1, '2023-06-15', 10000.00,  9000.00, 3000.00,     0.00, 10000.00, @id_cuo_pag),
+  ( 5, 1, '2023-06-15', 10000.00,  9000.00, 3000.00,     0.00, 10000.00, @id_cuo_pag),
+  ( 6, 1, '2023-12-15', 11000.00,  9000.00, 3000.00,     0.00, 11000.00, @id_cuo_pag),
+  ( 7, 1, '2023-12-15', 11000.00,  9000.00, 3000.00,     0.00, 11000.00, @id_cuo_pag),
+  ( 8, 1, '2023-12-15', 11000.00,  9000.00, 3000.00,     0.00, 11000.00, @id_cuo_pag),
+  ( 9, 1, '2023-12-15', 11000.00,  9000.00, 3000.00,     0.00, 11000.00, @id_cuo_pag),
+  (10, 1, '2023-12-15', 11000.00,  9000.00, 3000.00,     0.00, 11000.00, @id_cuo_pag),
+  (11, 1, '2024-06-15', 12000.00,  9000.00, 3000.00,     0.00, 12000.00, @id_cuo_pag),
+  (12, 1, '2024-06-15', 12000.00,  9000.00, 3000.00,     0.00, 12000.00, @id_cuo_pag),
+  (13, 1, '2024-06-15', 12000.00,  9000.00, 3000.00,     0.00, 12000.00, @id_cuo_pag),
+  (14, 1, '2024-06-15', 12000.00,  9000.00, 3000.00,     0.00, 12000.00, @id_cuo_pag),
+  (15, 1, '2024-06-15', 12000.00,  9000.00, 3000.00,     0.00, 12000.00, @id_cuo_pag),
+  (16, 1, '2024-01-10', 15000.00, 11000.00, 4000.00,     0.00, 11000.00, @id_cuo_pagmor),
+  (17, 1, '2024-01-10', 15000.00, 11000.00, 4000.00,     0.00, 11000.00, @id_cuo_pagmor),
+  (18, 1, '2024-01-10', 15000.00, 11000.00, 4000.00,     0.00, 11000.00, @id_cuo_pagmor),
+  (19, 1, '2024-01-10', 15000.00, 11000.00, 4000.00,     0.00, 11000.00, @id_cuo_pagmor),
+  (20, 1, '2024-01-10', 15000.00, 11000.00, 4000.00,     0.00, 11000.00, @id_cuo_pagmor),
+  (21, 1, '2023-01-10', 15000.00, 11000.00, 4000.00,     0.00, 15000.00, @id_cuo_pagmor),
+  (22, 1, '2023-02-10', 15000.00, 11000.00, 4000.00,     0.00, 15000.00, @id_cuo_pagmor),
+  (23, 1, '2023-03-10', 15000.00, 11000.00, 4000.00,     0.00, 15000.00, @id_cuo_pagmor),
+  (24, 1, '2023-04-10', 15000.00, 11000.00, 4000.00,     0.00, 15000.00, @id_cuo_pagmor),
+  (25, 1, '2023-05-10', 15000.00, 11000.00, 4000.00,     0.00, 15000.00, @id_cuo_pagmor),
+  (26, 1, '2024-12-10', 17000.00, 11000.00, 4000.00,     0.00, 15000.00, @id_cuo_pagmor),
+  (27, 1, '2024-12-10', 17000.00, 11000.00, 4000.00,     0.00, 15000.00, @id_cuo_pagmor),
+  (28, 1, '2024-12-10', 17000.00, 11000.00, 4000.00,     0.00, 15000.00, @id_cuo_pagmor),
+  (29, 1, '2024-12-10', 17000.00, 11000.00, 4000.00,     0.00, 15000.00, @id_cuo_pagmor),
+  (30, 1, '2024-12-10', 17000.00, 11000.00, 4000.00,     0.00, 15000.00, @id_cuo_pagmor),
+  (31, 1, '2025-09-10', 18000.00, 13500.00, 4500.00, 18000.00,     0.00, @id_cuo_venc),
+  (32, 1, '2025-09-10', 18000.00, 13500.00, 4500.00, 18000.00,     0.00, @id_cuo_venc),
+  (33, 1, '2025-09-10', 18000.00, 13500.00, 4500.00, 18000.00,     0.00, @id_cuo_venc),
+  (34, 1, '2025-09-10', 18000.00, 13500.00, 4500.00, 18000.00,     0.00, @id_cuo_venc),
+  (35, 1, '2025-09-10', 18000.00, 13500.00, 4500.00, 18000.00,     0.00, @id_cuo_venc),
+  (36, 1, '2025-10-10', 19000.00, 13500.00, 4500.00, 18000.00,     17000.0, @id_cuo_venc),
+  (37, 1, '2025-10-10', 19000.00, 13500.00, 4500.00, 18000.00,     17000.0, @id_cuo_venc),
+  (38, 1, '2025-10-10', 19000.00, 13500.00, 4500.00, 18000.00,     17000.0, @id_cuo_venc),
+  (39, 1, '2025-10-10', 19000.00, 13500.00, 4500.00, 18000.00,     17000.0, @id_cuo_venc),
+  (40, 1, '2025-10-10', 19000.00, 13500.00, 4500.00, 18000.00,     17000.0, @id_cuo_venc),
+  (41, 1, '2025-11-05', 19000.00, 13500.00, 4500.00, 18000.00,     0.00, @id_cuo_venc),
+  (42, 1, '2025-11-05', 19000.00, 13500.00, 4500.00, 18000.00,     0.00, @id_cuo_venc),
+  (43, 1, '2025-11-05', 19000.00, 13500.00, 4500.00, 18000.00,     0.00, @id_cuo_venc),
+  (44, 1, '2025-11-05', 19000.00, 13500.00, 4500.00, 18000.00,     0.00, @id_cuo_venc),
+  (45, 1, '2025-11-05', 19000.00, 13500.00, 4500.00, 18000.00,     0.00, @id_cuo_venc),
+  (46, 1, '2025-11-20', 20000.00, 15000.00, 5000.00, 20000.00,     13000.00, @id_cuo_pend),
+  (47, 1, '2025-11-25', 20000.00, 15000.00, 5000.00, 20000.00,     13000.00, @id_cuo_pend),
+  (48, 1, '2025-11-30', 20000.00, 15000.00, 5000.00, 20000.00,     13000.00, @id_cuo_pend),
+  (49, 1, '2025-12-01', 20000.00, 15000.00, 5000.00, 20000.00,     13000.00, @id_cuo_pend),
+  (50, 1, '2025-12-04', 20000.00, 15000.00, 5000.00, 20000.00,     13000.00, @id_cuo_pend),
+  (51, 1, '2025-12-15', 21000.00, 15000.00, 5000.00, 20000.00,     0.00, @id_cuo_pend),
+  (52, 1, '2025-12-15', 21000.00, 15000.00, 5000.00, 20000.00,     0.00, @id_cuo_pend),
+  (53, 1, '2025-12-15', 21000.00, 15000.00, 5000.00, 20000.00,     0.00, @id_cuo_pend),
+  (54, 1, '2025-12-15', 21000.00, 15000.00, 5000.00, 20000.00,     0.00, @id_cuo_pend),
+  (55, 1, '2025-12-15', 21000.00, 15000.00, 5000.00, 20000.00,     0.00, @id_cuo_pend),
+  (56, 1, '2026-01-10', 22000.00, 15000.00, 5000.00, 20000.00,     13000.00, @id_cuo_pend),
+  (57, 1, '2026-01-10', 22000.00, 15000.00, 5000.00, 20000.00,     13000.00, @id_cuo_pend),
+  (58, 1, '2026-01-10', 22000.00, 15000.00, 5000.00, 20000.00,     13000.00, @id_cuo_pend),
+  (59, 1, '2026-01-10', 22000.00, 15000.00, 5000.00, 20000.00,     13000.00, @id_cuo_pend),
+  (60, 1, '2026-01-10', 22000.00, 15000.00, 5000.00, 20000.00,     13000.00, @id_cuo_pend);
+
+-- pagos
+SET @__allow_pago_insert := 1;
+
+INSERT INTO pagos
+  (id_cuota, fecha_pago, monto_pagado, id_metodo, numero_comprobante, observaciones)
+VALUES
+  ( 1, '2023-06-15 10:00:00',  6000.00, 1, 'COMP0001', 'Pago parcial 1 cuota 1'),
+  ( 1, '2023-06-15 13:00:00',  6000.00, 2, 'COMP0002', 'Pago parcial 2 cuota 1'),
+  ( 2, '2023-06-15 11:00:00',  6000.00, 3, 'COMP0003', 'Pago parcial 1 cuota 2'),
+  ( 2, '2023-06-15 16:00:00',  6000.00, 4, 'COMP0004', 'Pago parcial 2 cuota 2'),
+  ( 3, '2023-06-15 09:30:00',  6000.00, 5, 'COMP0005', 'Pago parcial 1 cuota 3'),
+  ( 3, '2023-06-15 18:15:00',  6000.00, 6, 'COMP0006', 'Pago parcial 2 cuota 3'),
+  ( 4, '2023-06-15 12:00:00',  6000.00, 7, 'COMP0007', 'Pago parcial 1 cuota 4'),
+  ( 4, '2023-06-15 17:45:00',  6000.00, 8, 'COMP0008', 'Pago parcial 2 cuota 4'),
+  ( 5, '2023-06-15 10:20:00',  6000.00, 1, 'COMP0009', 'Pago parcial 1 cuota 5'),
+  ( 5, '2023-06-15 15:10:00',  6000.00, 2, 'COMP0010', 'Pago parcial 2 cuota 5'),
+  ( 6, '2023-12-15 10:00:00',  6000.00, 3, 'COMP0011', 'Pago parcial 1 cuota 6'),
+  ( 6, '2023-12-15 14:30:00',  6000.00, 4, 'COMP0012', 'Pago parcial 2 cuota 6'),
+  ( 7, '2023-12-15 09:15:00',  6000.00, 5, 'COMP0013', 'Pago parcial 1 cuota 7'),
+  ( 7, '2023-12-15 13:45:00',  6000.00, 6, 'COMP0014', 'Pago parcial 2 cuota 7'),
+  ( 8, '2023-12-15 11:05:00',  6000.00, 7, 'COMP0015', 'Pago parcial 1 cuota 8'),
+  ( 8, '2023-12-15 17:20:00',  6000.00, 8, 'COMP0016', 'Pago parcial 2 cuota 8'),
+  ( 9, '2023-12-15 10:40:00',  6000.00, 1, 'COMP0017', 'Pago parcial 1 cuota 9'),
+  ( 9, '2023-12-15 16:10:00',  6000.00, 2, 'COMP0018', 'Pago parcial 2 cuota 9'),
+  (10, '2023-12-15 09:50:00',  6000.00, 3, 'COMP0019', 'Pago parcial 1 cuota 10'),
+  (10, '2023-12-15 15:55:00',  6000.00, 4, 'COMP0020', 'Pago parcial 2 cuota 10'),
+  (11, '2024-06-15 10:05:00',  6000.00, 5, 'COMP0021', 'Pago parcial 1 cuota 11'),
+  (11, '2024-06-15 13:25:00',  6000.00, 6, 'COMP0022', 'Pago parcial 2 cuota 11'),
+  (12, '2024-06-15 09:35:00',  6000.00, 7, 'COMP0023', 'Pago parcial 1 cuota 12'),
+  (12, '2024-06-15 17:05:00',  6000.00, 8, 'COMP0024', 'Pago parcial 2 cuota 12'),
+  (13, '2024-06-15 11:15:00',  6000.00, 1, 'COMP0025', 'Pago parcial 1 cuota 13'),
+  (13, '2024-06-15 18:40:00',  6000.00, 2, 'COMP0026', 'Pago parcial 2 cuota 13'),
+  (14, '2024-06-15 10:30:00',  6000.00, 3, 'COMP0027', 'Pago parcial 1 cuota 14'),
+  (14, '2024-06-15 16:20:00',  6000.00, 4, 'COMP0028', 'Pago parcial 2 cuota 14'),
+  (15, '2024-06-15 09:45:00',  6000.00, 5, 'COMP0029', 'Pago parcial 1 cuota 15'),
+  (15, '2024-06-15 15:35:00',  6000.00, 6, 'COMP0030', 'Pago parcial 2 cuota 15'),
+  (16, '2024-01-10 10:00:00',  7500.00, 7, 'COMP0031', 'Pago parcial 1 cuota 16'),
+  (16, '2024-01-10 13:30:00',  7500.00, 8, 'COMP0032', 'Pago parcial 2 cuota 16'),
+  (17, '2024-01-10 09:20:00',  7500.00, 1, 'COMP0033', 'Pago parcial 1 cuota 17'),
+  (17, '2024-01-10 16:10:00',  7500.00, 2, 'COMP0034', 'Pago parcial 2 cuota 17'),
+  (18, '2024-01-10 11:10:00',  7500.00, 3, 'COMP0035', 'Pago parcial 1 cuota 18'),
+  (18, '2024-01-10 18:00:00',  7500.00, 4, 'COMP0036', 'Pago parcial 2 cuota 18'),
+  (19, '2024-01-10 10:25:00',  7500.00, 5, 'COMP0037', 'Pago parcial 1 cuota 19'),
+  (19, '2024-01-10 17:05:00',  7500.00, 6, 'COMP0038', 'Pago parcial 2 cuota 19'),
+  (20, '2024-01-10 09:55:00',  7500.00, 7, 'COMP0039', 'Pago parcial 1 cuota 20'),
+  (20, '2024-01-10 15:45:00',  7500.00, 8, 'COMP0040', 'Pago parcial 2 cuota 20'),
+  (21, '2024-05-10 10:15:00',  7500.00, 1, 'COMP0041', 'Pago parcial 1 cuota 21'),
+  (21, '2024-05-10 13:20:00',  7500.00, 2, 'COMP0042', 'Pago parcial 2 cuota 21'),
+  (22, '2024-05-10 09:40:00',  7500.00, 3, 'COMP0043', 'Pago parcial 1 cuota 22'),
+  (22, '2024-05-10 16:25:00',  7500.00, 4, 'COMP0044', 'Pago parcial 2 cuota 22'),
+  (23, '2024-05-10 11:05:00',  7500.00, 5, 'COMP0045', 'Pago parcial 1 cuota 23'),
+  (23, '2024-05-10 18:05:00',  7500.00, 6, 'COMP0046', 'Pago parcial 2 cuota 23'),
+  (24, '2024-05-10 10:35:00',  7500.00, 7, 'COMP0047', 'Pago parcial 1 cuota 24'),
+  (24, '2024-05-10 17:15:00',  7500.00, 8, 'COMP0048', 'Pago parcial 2 cuota 24'),
+  (25, '2024-05-10 09:30:00',  7500.00, 1, 'COMP0049', 'Pago parcial 1 cuota 25'),
+  (25, '2024-05-10 15:50:00',  7500.00, 2, 'COMP0050', 'Pago parcial 2 cuota 25'),
+  (26, '2024-11-10 10:00:00',  7500.00, 3, 'COMP0051', 'Pago parcial 1 cuota 26'),
+  (26, '2024-11-10 13:40:00',  7500.00, 4, 'COMP0052', 'Pago parcial 2 cuota 26'),
+  (27, '2024-11-10 09:25:00',  7500.00, 5, 'COMP0053', 'Pago parcial 1 cuota 27'),
+  (27, '2024-11-10 16:30:00',  7500.00, 6, 'COMP0054', 'Pago parcial 2 cuota 27'),
+  (28, '2024-11-10 11:20:00',  7500.00, 7, 'COMP0055', 'Pago parcial 1 cuota 28'),
+  (28, '2024-11-10 18:10:00',  7500.00, 8, 'COMP0056', 'Pago parcial 2 cuota 28'),
+  (29, '2024-11-10 10:45:00',  7500.00, 1, 'COMP0057', 'Pago parcial 1 cuota 29'),
+  (29, '2024-11-10 17:25:00',  7500.00, 2, 'COMP0058', 'Pago parcial 2 cuota 29'),
+  (30, '2024-11-10 09:55:00',  7500.00, 3, 'COMP0059', 'Pago parcial 1 cuota 30'),
+  (30, '2024-11-10 15:30:00',  7500.00, 4, 'COMP0060', 'Pago parcial 2 cuota 30');
+
+SET @__allow_pago_insert := NULL;
+
+
+-- penalizaciones
 SET @id_pen_pend = (SELECT id FROM estado_penalizacion WHERE codigo='Pendiente');
+SET @id_pen_pag  = (SELECT id FROM estado_penalizacion WHERE codigo='Pagada');
 
-SET @id_cargo_ac = (SELECT id FROM cargo_empleado WHERE codigo='Atencion_Cliente');
-SET @id_cargo_an = (SELECT id FROM cargo_empleado WHERE codigo='Analista_Credito');
-SET @id_cargo_ge = (SELECT id FROM cargo_empleado WHERE codigo='Gerente');
-SET @id_cargo_cb = (SELECT id FROM cargo_empleado WHERE codigo='Cobranza');
-SET @id_cargo_ad = (SELECT id FROM cargo_empleado WHERE codigo='Administrador');
+INSERT INTO penalizaciones
+  (id_cuota, dias_mora, monto_penalizacion, tasa_mora, fecha_aplicacion, id_estado)
+VALUES
+  ( 1,  3,  54.00, 0.0005, '2023-06-20 10:00:00', @id_pen_pag),
+  ( 2,  5, 100.00, 0.0005, '2023-06-22 11:15:00', @id_pen_pag),
+  ( 3,  2,  40.00, 0.0005, '2023-06-18 09:30:00', @id_pen_pag),
+  ( 4,  4,  80.00, 0.0005, '2023-06-21 16:40:00', @id_pen_pag),
+  ( 5,  6, 120.00, 0.0005, '2023-06-23 14:10:00', @id_pen_pag),
+  ( 6,  7, 140.00, 0.0005, '2023-12-22 10:05:00', @id_pen_pag),
+  ( 7, 10, 200.00, 0.0005, '2023-12-25 12:20:00', @id_pen_pag),
+  ( 8,  8, 160.00, 0.0005, '2023-12-24 18:30:00', @id_pen_pag),
+  ( 9,  9, 180.00, 0.0005, '2023-12-26 09:50:00', @id_pen_pag),
+  (10, 12, 240.00, 0.0005, '2023-12-29 15:45:00', @id_pen_pag),
+  (11,  5, 100.00, 0.0005, '2024-06-20 11:00:00', @id_pen_pag),
+  (12,  7, 140.00, 0.0005, '2024-06-22 13:35:00', @id_pen_pag),
+  (13,  9, 180.00, 0.0005, '2024-06-24 17:10:00', @id_pen_pag),
+  (14, 11, 220.00, 0.0005, '2024-06-26 10:25:00', @id_pen_pag),
+  (15, 14, 280.00, 0.0005, '2024-06-29 09:40:00', @id_pen_pag),
+  (16, 15, 300.00, 0.0005, '2024-01-28 10:15:00', @id_pen_pag),
+  (17, 18, 360.00, 0.0005, '2024-01-31 16:05:00', @id_pen_pag),
+  (18, 20, 400.00, 0.0005, '2024-02-02 12:45:00', @id_pen_pag),
+  (19, 22, 440.00, 0.0005, '2024-02-04 09:55:00', @id_pen_pag),
+  (20, 25, 500.00, 0.0005, '2024-02-07 14:20:00', @id_pen_pag),
+  (21,  8, 160.00, 0.0005, '2024-05-20 11:30:00', @id_pen_pend),
+  (22, 12, 240.00, 0.0005, '2024-05-24 10:40:00', @id_pen_pend),
+  (23, 15, 300.00, 0.0005, '2024-05-27 16:20:00', @id_pen_pend),
+  (24, 18, 360.00, 0.0005, '2024-05-30 09:10:00', @id_pen_pend),
+  (25, 20, 400.00, 0.0005, '2024-06-01 13:55:00', @id_pen_pend),
+  (26, 10, 200.00, 0.0005, '2024-11-20 10:05:00', @id_pen_pend),
+  (27, 14, 280.00, 0.0005, '2024-11-24 15:25:00', @id_pen_pend),
+  (28, 17, 340.00, 0.0005, '2024-11-27 09:35:00', @id_pen_pend),
+  (29, 21, 420.00, 0.0005, '2024-12-01 18:10:00', @id_pen_pend),
+  (30, 24, 480.00, 0.0005, '2024-12-04 11:45:00', @id_pen_pend),
+  (31, 28, 560.00, 0.0005, '2025-10-08 10:30:00', @id_pen_pend),
+  (32, 30, 600.00, 0.0005, '2025-10-10 14:20:00', @id_pen_pend),
+  (33, 26, 520.00, 0.0005, '2025-10-06 09:55:00', @id_pen_pend),
+  (34, 22, 440.00, 0.0005, '2025-10-02 16:05:00', @id_pen_pend),
+  (35, 19, 380.00, 0.0005, '2025-09-29 12:40:00', @id_pen_pend),
+  (36, 16, 320.00, 0.0005, '2025-10-26 11:15:00', @id_pen_pend),
+  (37, 13, 260.00, 0.0005, '2025-10-23 17:30:00', @id_pen_pend),
+  (38, 11, 220.00, 0.0005, '2025-10-21 09:20:00', @id_pen_pend),
+  (39,  9, 180.00, 0.0005, '2025-10-19 15:45:00', @id_pen_pend),
+  (40,  7, 140.00, 0.0005, '2025-10-17 10:05:00', @id_pen_pend),
+  (41,  6, 120.00, 0.0005, '2025-11-12 09:30:00', @id_pen_pend),
+  (42,  4,  80.00, 0.0005, '2025-11-10 11:45:00', @id_pen_pend),
+  (43,  3,  60.00, 0.0005, '2025-11-09 16:25:00', @id_pen_pend),
+  (44,  5, 100.00, 0.0005, '2025-11-11 13:10:00', @id_pen_pend),
+  (45,  2,  40.00, 0.0005, '2025-11-08 10:50:00', @id_pen_pend),
+  (46,  1,  20.00, 0.0005, '2025-11-21 10:00:00', @id_pen_pend),
+  (47,  3,  60.00, 0.0005, '2025-11-28 12:15:00', @id_pen_pend),
+  (48,  4,  80.00, 0.0005, '2025-12-03 09:20:00', @id_pen_pend),
+  (49,  6, 120.00, 0.0005, '2025-12-07 14:30:00', @id_pen_pend),
+  (50,  8, 160.00, 0.0005, '2025-12-09 17:05:00', @id_pen_pend),
+  (51, 10, 200.00, 0.0005, '2025-12-25 11:40:00', @id_pen_pag),
+  (52,  7, 140.00, 0.0005, '2026-01-05 09:15:00', @id_pen_pag),
+  (53,  5, 100.00, 0.0005, '2026-01-10 16:45:00', @id_pen_pag),
+  (54,  9, 180.00, 0.0005, '2026-01-20 10:35:00', @id_pen_pag),
+  (55, 11, 220.00, 0.0005, '2026-01-22 15:50:00', @id_pen_pag),
+  (56, 13, 260.00, 0.0005, '2026-02-02 12:25:00', @id_pen_pag),
+  (57, 15, 300.00, 0.0005, '2026-02-05 09:55:00', @id_pen_pag),
+  (58, 18, 360.00, 0.0005, '2026-02-08 14:05:00', @id_pen_pag),
+  (59, 20, 400.00, 0.0005, '2026-02-10 17:20:00', @id_pen_pag),
+  (60, 22, 440.00, 0.0005, '2026-02-12 11:10:00', @id_pen_pag);
 
-SET @id_tipo_per = (SELECT id FROM tipo_producto WHERE codigo='Personal');
-SET @id_tipo_hip = (SELECT id FROM tipo_producto WHERE codigo='Hipotecario');
-SET @id_tipo_emp = (SELECT id FROM tipo_producto WHERE codigo='Empresarial');
-SET @id_tipo_lea = (SELECT id FROM tipo_producto WHERE codigo='Leasing');
-SET @id_tipo_tar = (SELECT id FROM tipo_producto WHERE codigo='Tarjeta_Corporativa');
+-- evaluaciones_seguimiento
+INSERT INTO evaluaciones_seguimiento
+  (id_cliente, id_credito, id_analista, fecha_evaluacion,
+   id_comp_pago, nivel_endeudamiento, puntaje_actualizado,
+   observaciones, recomendaciones)
+VALUES
+  ( 1,  1,  3, '2023-03-10 10:00:00', 1, 0.320, 780,
+    'Cliente con buen historial y capacidad de pago holgada.',
+    'Mantener condiciones actuales y ofrecer aumentos graduales de linea.'),
+  ( 2,  2,  4, '2023-03-12 11:30:00', 2, 0.450, 755,
+    'Ligero incremento en nivel de endeudamiento, sin señales de estres financiero.',
+    'Monitorear trimestralmente y sugerir consolidacion si aumenta el uso de credito.'),
+  ( 3,  3,  5, '2023-03-15 09:45:00', 1, 0.380, 790,
+    'Ingresos estables y baja utilizacion de credito.',
+    'Ofrecer productos de inversion y tarjetas premium.'),
+  ( 4,  4,  6, '2023-03-20 14:10:00', 3, 0.620, 710,
+    'Endeudamiento moderado con algunos atrasos menores en el ultimo semestre.',
+    'Recomendar reduccion de limite en tarjetas y planes de pago ordenado.'),
+  ( 5,  5,  3, '2023-03-25 16:20:00', 2, 0.470, 760,
+    'Cliente prolijo con gastos controlados, leve aumento en compromisos mensuales.',
+    'Revision semestral y educacion financiera basica.'),
+  ( 6,  6,  4, '2023-04-02 10:05:00', 4, 0.880, 655,
+    'Atrasos frecuentes en servicios y creditos menores.',
+    'Proponer reestructuracion de deuda y congelamiento de nuevas lineas.'),
+  ( 7,  7,  5, '2023-04-08 09:55:00', 3, 0.640, 705,
+    'Dependencia moderada del credito para gastos corrientes.',
+    'Limitar nuevos productos y priorizar pagos minimos reforzados.'),
+  ( 8,  8,  6, '2023-04-15 15:40:00', 1, 0.310, 800,
+    'Excelente comportamiento de pago y reserva de ahorro.',
+    'Ofrecer upgrade de producto a mejores tasas.'),
+  ( 9,  9,  3, '2023-04-20 11:25:00', 2, 0.490, 745,
+    'Uso responsable del credito, leve concentracion en una sola entidad.',
+    'Recomendar diversificacion de productos y plazos mas largos.'),
+  (10, 10,  4, '2023-04-28 13:15:00', 1, 0.360, 785,
+    'Buen perfil de ingresos y baja probabilidad de incumplimiento.',
+    'Mantener tasa actual y ofrecer ampliacion moderada del monto.'),
+  (11, 11,  5, '2023-05-05 10:45:00', 2, 0.520, 735,
+    'Compromisos mensuales algo ajustados respecto al ingreso neto.',
+    'No aumentar exposicion y revisar nuevamente en seis meses.'),
+  (12, 12,  6, '2023-05-12 09:20:00', 3, 0.670, 700,
+    'Historial de credito aceptable con uno o dos atrasos recientes.',
+    'Proponer refinanciacion parcial con plazos mas largos.'),
+  (13, 13,  3, '2023-05-19 16:05:00', 4, 0.910, 645,
+    'Endeudamiento alto y capacidad de ahorro practicamente nula.',
+    'Restringir nuevos creditos y solicitar garantias adicionales.'),
+  (14, 14,  4, '2023-05-26 14:30:00', 2, 0.480, 750,
+    'Deuda manejable y buen nivel de ingresos formales.',
+    'Mantener condiciones y ofrecer debito automatico con bonificacion.'),
+  (15, 15,  5, '2023-06-02 11:00:00', 1, 0.340, 795,
+    'Cliente altamente cumplidor, sin atrasos registrados.',
+    'Proponer paquete de productos integrados con beneficios.'),
+  (16, 16,  6, '2023-06-10 10:10:00', 3, 0.650, 710,
+    'Uso intensivo de cuotas y sobregiros ocasionales.',
+    'Sugerir consolidacion de deuda en un solo credito a tasa preferencial.'),
+  (17, 17,  3, '2023-06-18 09:35:00', 2, 0.510, 740,
+    'Pagos en termino la mayor parte del año, alguna demora menor.',
+    'Mantener lineas actuales y monitorear en los proximos 90 dias.'),
+  (18, 18,  4, '2023-06-25 15:25:00', 5, 1.120, 610,
+    'Mora acumulada en varios productos y uso de efectivo para cubrir cuotas.',
+    'Iniciar plan intensivo de recupero y evaluacion de refinanciacion global.'),
+  (19, 19,  5, '2023-07-03 12:50:00', 3, 0.690, 705,
+    'Exposicion elevada pero aun sostenible con su nivel de ingresos.',
+    'Revision mensual y prohibicion de nuevos creditos hasta reducir saldos.'),
+  (20, 20,  6, '2023-07-11 16:40:00', 2, 0.530, 735,
+    'Deuda moderada con leve tendencia al aumento en los ultimos meses.',
+    'Recomendar mantener cuotas fijas y evitar nuevas tarjetas de credito.'),
 
--- ------------------------------------------------------------------
--- 1) Provincias (60)  ✔
--- ------------------------------------------------------------------
-INSERT INTO provincias(nombre)
-SELECT CONCAT('Provincia ', n)
-FROM helper_seq WHERE n <= 60;
+  (21, 21,  7, '2024-01-15 10:05:00', 4, 0.880, 660,
+    'Aumento su uso de credito en el ultimo semestre con atrasos frecuentes.',
+    'Negociar unificacion de deudas y congelar limites actuales.'),
+  (22, 22,  8, '2024-01-22 11:45:00', 5, 1.250, 595,
+    'Morosidad cronica en diferentes entidades y alto ratio cuota/ingreso.',
+    'Derivar a area de recupero y exigir garantias adicionales.'),
+  (23, 23,  7, '2024-02-02 09:30:00', 3, 0.710, 705,
+    'Comportamiento irregular con periodos de buen pago y otros con mora.',
+    'Proponer cronograma de pagos escalonado y seguimiento estricto.'),
+  (24, 24,  8, '2024-02-10 14:20:00', 2, 0.540, 735,
+    'Deuda en crecimiento pero aun controlada por sus ingresos actuales.',
+    'Limitar nuevas operaciones a cancelacion de deudas mas caras.'),
+  (25, 25,  7, '2024-02-18 16:35:00', 1, 0.310, 790,
+    'Cliente disciplinado con amplia capacidad de endeudamiento disponible.',
+    'Ofrecer lineas especiales para proyectos de inversion personales.'),
+  (26, 26,  8, '2024-03-01 10:15:00', 4, 0.930, 650,
+    'Utiliza credito para gastos corrientes y presenta atrasos medianos.',
+    'Recomendar ajuste de presupuesto personal y tope de nuevas compras en cuotas.'),
+  (27, 27,  7, '2024-03-10 09:55:00', 3, 0.690, 705,
+    'Historial mixto con buena voluntad de pago pero mala organizacion financiera.',
+    'Ofrecer asesoria financiera y consolidar deuda en un solo producto.'),
+  (28, 28,  8, '2024-03-18 15:10:00', 2, 0.520, 740,
+    'Empleo estable y endeudamiento medio, sin atrasos significativos.',
+    'Mantener condiciones y permitir pequeños incrementos de linea.'),
+  (29, 29,  7, '2024-03-27 12:05:00', 6, 1.380, 580,
+    'Carga financiera muy alta, varios productos en mora avanzada.',
+    'Suspender nuevas operaciones y ofrecer acuerdo de pago estructurado.'),
+  (30, 30,  8, '2024-04-05 11:25:00', 3, 0.660, 715,
+    'Uso intenso de credito para consumo no esencial.',
+    'Sugerir reduccion gradual de exposiciones y priorizar cancelacion de cuotas.'),
+  (31, 31,  7, '2024-04-15 10:00:00', 2, 0.490, 745,
+    'Perfil estable con ligera sobrecarga en algunos meses del año.',
+    'Revision semestral y oferta de tasa preferencial si mejora su comportamiento.'),
+  (32, 32,  8, '2024-04-23 09:40:00', 1, 0.330, 785,
+    'Cliente prolijo y con capacidad de ahorro sostenida.',
+    'Incentivar productos de inversion y plazos fijos.'),
+  (33, 33,  7, '2024-05-02 16:20:00', 3, 0.700, 710,
+    'Deuda manejable pero cercana al limite recomendado.',
+    'Limitar nuevas lineas y priorizar cancelacion de saldos revolventes.'),
+  (34, 34,  8, '2024-05-10 13:35:00', 5, 1.180, 605,
+    'Morosidad significativa con refinanciaciones recientes.',
+    'Evitar incrementar exposicion y mantener plan de pagos vigente.'),
+  (35, 35,  7, '2024-05-18 11:10:00', 4, 0.890, 655,
+    'Compromisos mensuales altos, pero con buena voluntad de pago.',
+    'Recomendar achicar gastos discrecionales y ajustar plazos.'),
+  (36, 36,  8, '2024-05-27 15:45:00', 2, 0.510, 740,
+    'Ingresos formales y nivel de deuda aceptable.',
+    'Mantener productos actuales y promover debito automatico.'),
+  (37, 37,  7, '2024-06-03 09:25:00', 3, 0.680, 715,
+    'Alguna mora aislada relacionada a gastos extraordinarios.',
+    'Seguimiento puntual y flexibilizar plazos ante nuevos imprevistos.'),
+  (38, 38,  8, '2024-06-11 10:55:00', 1, 0.290, 800,
+    'Excelente relacion cuota/ingreso y sin atrasos.',
+    'Ofrecer beneficios VIP y condiciones preferenciales.'),
+  (39, 39,  7, '2024-06-20 12:30:00', 4, 0.910, 645,
+    'Exposicion elevada con tendencia creciente.',
+    'Limitar montos y condicionarlos a cancelacion previa de parte de la deuda.'),
+  (40, 40,  8, '2024-06-28 16:05:00', 2, 0.520, 735,
+    'Comportamiento aceptable, leve presion sobre el flujo de caja mensual.',
+    'Postergar aumentos de linea hasta ver evolucion del proximo trimestre.'),
 
--- ------------------------------------------------------------------
--- 1.b) Ciudades (5 por provincia = 300)  ✔
--- ------------------------------------------------------------------
-INSERT INTO ciudades(id_provincia, nombre)
-SELECT p.id_provincia,
-       CONCAT('Ciudad P', p.id_provincia, ' - ', k.k)
-FROM provincias p
-JOIN (SELECT 1 AS k UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5) k;
+  (41, 41,  9, '2025-01-10 10:05:00', 3, 0.690, 710,
+    'Uso intensivo de cuotas y algunos pagos fuera de termino.',
+    'Recomendar reorganizacion de deudas y control de gastos variables.'),
+  (42, 42, 10, '2025-01-18 11:20:00', 4, 0.940, 650,
+    'Alta exposicion y refinanciaciones frecuentes en los ultimos meses.',
+    'Evitar nuevos creditos y priorizar cancelaciones anticipadas.'),
+  (43, 43,  9, '2025-01-26 09:50:00', 2, 0.510, 740,
+    'Endeudamiento medio con estabilidad laboral.',
+    'Mantener cupos actuales y revisar en seis meses.'),
+  (44, 44, 10, '2025-02-03 14:40:00', 1, 0.340, 785,
+    'Buen comportamiento de pago y alto puntaje interno.',
+    'Ofrecer mejoras de tasa y productos complementarios.'),
+  (45, 45,  9, '2025-02-11 16:00:00', 3, 0.720, 705,
+    'Incremento reciente en el uso de credito para consumos grandes.',
+    'Recomendar prorratear gastos y evitar nuevas compras en cuotas.'),
+  (46, 46, 10, '2025-02-20 10:30:00', 5, 1.260, 590,
+    'Morosidad importante y riesgo alto de incumplimiento futuro.',
+    'Derivar a comite de riesgo para posibles acciones de recupero.'),
+  (47, 47,  9, '2025-02-28 09:35:00', 4, 0.880, 660,
+    'Compromisos elevados pero todavia gestionables.',
+    'No otorgar nuevos productos y promover cancelacion anticipada parcial.'),
+  (48, 48, 10, '2025-03-07 15:20:00', 2, 0.500, 745,
+    'Uso razonable del credito, sin atrasos graves.',
+    'Conservar condiciones, reevaluar si la deuda crece por encima del 60% de sus ingresos.'),
+  (49, 49,  9, '2025-03-15 12:10:00', 7, 1.520, 560,
+    'Cliente critico con incumplimientos reiterados.',
+    'Restringir completamente nuevos creditos y encarar negociaciones de salida.'),
+  (50, 50, 10, '2025-03-24 11:55:00', 3, 0.710, 710,
+    'Deuda alta, pero con empleo estable y pagos en curso.',
+    'Mantener plan actual y aumentar la frecuencia de seguimiento.'),
+  (51, 51,  9, '2025-04-02 10:05:00', 2, 0.460, 755,
+    'Buen nivel de ingresos y deuda moderada.',
+    'Permitir pequeños incrementos de linea con monitoreo trimestral.'),
+  (52, 52, 10, '2025-04-10 09:45:00', 1, 0.330, 790,
+    'Cliente con excelentes indicadores financieros.',
+    'Ofrecer productos premium y beneficios adicionales de fidelizacion.'),
+  (53, 53,  9, '2025-04-18 14:25:00', 3, 0.680, 715,
+    'Algunos atrasos aislados pero con rapida regularizacion.',
+    'Reforzar uso de debito automatico y notificaciones tempranas.'),
+  (54, 54, 10, '2025-04-26 16:10:00', 4, 0.910, 650,
+    'Carga financiera alta y tendencia a refinanciar.',
+    'Desaconsejar nuevos creditos y revisar tope de exposicion.'),
+  (55, 55,  9, '2025-05-05 11:20:00', 2, 0.520, 740,
+    'Perfil adecuado, aunque con leve aumento en compromisos mensuales.',
+    'Postergar mejoras de linea hasta confirmar estabilidad en seis meses.'),
+  (56, 56, 10, '2025-05-13 10:00:00', 3, 0.700, 710,
+    'Uso importante de credito en los ultimos tres meses.',
+    'Recomendar reducir consumos financiados y priorizar cancelaciones.'),
+  (57, 57,  9, '2025-05-21 09:35:00', 6, 1.410, 575,
+    'Situacion compleja con varias deudas en mora.',
+    'Avanzar con estrategias de recupero y evitar toda nueva exposicion.'),
+  (58, 58, 10, '2025-05-29 15:30:00', 2, 0.480, 750,
+    'Ajustado pero sin atrasos importantes hasta la fecha.',
+    'Seguimiento cercano y sugerencia de presupuesto mensual detallado.'),
+  (59, 59,  9, '2025-06-06 12:15:00', 1, 0.300, 795,
+    'Excelente relacion ingreso/deuda y comportamiento historico sobresaliente.',
+    'Ofrecer condiciones preferenciales y mayor integracion de productos.'),
+  (60, 60, 10, '2025-06-14 11:05:00', 3, 0.690, 710,
+    'Endeudamiento medio-alto pero con capacidad de pago demostrada.',
+    'No incrementar montos por ahora y revisar nuevamente en el proximo semestre.');
 
-DROP TEMPORARY TABLE IF EXISTS map_ciudades;
-CREATE TEMPORARY TABLE map_ciudades AS
-SELECT
-  id_provincia,
-  id_ciudad,
-  ROW_NUMBER() OVER (PARTITION BY id_provincia ORDER BY id_ciudad) AS rn,
-  nombre AS nombre_ciudad
-FROM ciudades;
+-- campanias_productos
+TRUNCATE TABLE campanias_productos;
+INSERT INTO campanias_productos (id_campania, id_producto) VALUES
+  ( 1,  1),
+  ( 1,  2),
+  ( 1,  3),
+  ( 1,  4),
+  ( 1,  5),
+  ( 1,  6),
+  ( 2,  7),
+  ( 2,  8),
+  ( 2,  9),
+  ( 2, 10),
+  ( 2, 11),
+  ( 2, 12),
+  ( 3, 13),
+  ( 3, 14),
+  ( 3, 15),
+  ( 3, 16),
+  ( 3, 17),
+  ( 3, 18),
+  ( 4, 19),
+  ( 4, 20),
+  ( 4, 21),
+  ( 4, 22),
+  ( 4, 23),
+  ( 4, 24),
+  ( 5, 25),
+  ( 5, 26),
+  ( 5, 27),
+  ( 5, 28),
+  ( 5, 29),
+  ( 5, 30),
+  ( 6, 31),
+  ( 6, 32),
+  ( 6, 33),
+  ( 6, 34),
+  ( 6, 35),
+  ( 6, 36),
+  ( 7, 37),
+  ( 7, 38),
+  ( 7, 39),
+  ( 7, 40),
+  ( 7, 41),
+  ( 7, 42),
+  ( 8, 43),
+  ( 8, 44),
+  ( 8, 45),
+  ( 8, 46),
+  ( 8, 47),
+  ( 8, 48),
+  ( 9, 49),
+  ( 9, 50),
+  ( 9, 51),
+  ( 9, 52),
+  ( 9, 53),
+  ( 9, 54),
+  (10, 55),
+  (10, 56),
+  (10, 57),
+  (10, 58),
+  (10, 59),
+  (10, 60);
 
--- ------------------------------------------------------------------
--- 2) Sucursales (80)  ✔
--- ------------------------------------------------------------------
-INSERT INTO sucursales(nombre, id_provincia, id_ciudad, ciudad, direccion, telefono, email, fecha_apertura, id_estado)
-SELECT
-  CONCAT('Sucursal ', n)                                AS nombre,
-  ((n - 1) % 60) + 1                                   AS id_provincia,
-  mc.id_ciudad                                          AS id_ciudad,
-  mc.nombre_ciudad                                      AS ciudad_txt,
-  CONCAT('Calle ', n, ' #', 100 + n)                    AS direccion,
-  CONCAT('0376-', LPAD(n, 4, '0'))                      AS telefono,
-  CONCAT('suc', n, '@empresa.com')                      AS email,
-  DATE_ADD('2018-01-01', INTERVAL n DAY)                AS fecha_apertura,
-  IF(n % 20 = 0, @id_suc_inact, @id_suc_act)           AS id_estado
-FROM helper_seq s
-JOIN map_ciudades mc
-  ON mc.id_provincia = (((s.n - 1) % 60) + 1)
- AND mc.rn = (((s.n - 1) % 5) + 1)
-WHERE s.n <= 80;
 
--- ------------------------------------------------------------------
--- 3) Empleados (300)  ✔
--- ------------------------------------------------------------------
-INSERT INTO empleados(id_sucursal,nombre,apellido,dni,id_cargo,email,telefono,fecha_ingreso,salario,id_estado)
-SELECT
-  ((n - 1) % 80) + 1,
-  CONCAT('EmpNombre', n),
-  CONCAT('EmpApellido', n),
-  CONCAT('40', LPAD(n, 8, '0')),
-  ELT( (n % 5)+1, @id_cargo_ac, @id_cargo_an, @id_cargo_ge, @id_cargo_cb, @id_cargo_ad ),
-  CONCAT('emp', n, '@empresa.com'),
-  CONCAT('0376-', LPAD(5000 + n, 4, '0')),
-  DATE_ADD('2020-01-01', INTERVAL (n % 1500) DAY),
-  250000 + (n * 100),
-  IF(n % 50 = 0, @id_emp_inact, @id_emp_act)
-FROM helper_seq WHERE n <= 300;
-
--- ------------------------------------------------------------------
--- 4) Campañas (60)  ✔
--- ------------------------------------------------------------------
-INSERT INTO campanias_promocionales(nombre, descripcion, tasa_promocional, fecha_inicio, fecha_fin, descuento_porcentaje, id_estado, presupuesto, inversion_realizada, clientes_captados)
-SELECT
-  CONCAT('Campaña ', n),
-  CONCAT('Campaña de captación #', n),
-  10 + (n % 30),
-  DATE_ADD('2023-01-01', INTERVAL n MONTH),
-  DATE_ADD('2023-01-01', INTERVAL n+3 MONTH),
-  (n % 20),
-  CASE WHEN n % 17 = 0 THEN (SELECT id FROM estado_campania WHERE codigo='Cancelada')
-       WHEN n % 7  = 0 THEN (SELECT id FROM estado_campania WHERE codigo='Finalizada')
-       ELSE (SELECT id FROM estado_campania WHERE codigo='Activa')
-  END,
-  1000000 + n*5000,
-  100000 + n*1200,
-  0
-FROM helper_seq WHERE n <= 60;
-
--- ------------------------------------------------------------------
--- 5) Clientes (500)  ✔
--- ------------------------------------------------------------------
-INSERT INTO clientes(
-  nombre, apellido, dni, fecha_nacimiento, email, telefono, direccion,
-  ciudad, provincia, id_provincia, id_ciudad,
-  ingresos_declarados, id_situacion_laboral, id_campania_ingreso, id_estado
-)
-SELECT
-  CONCAT('CliNombre', n),
-  CONCAT('CliApellido', n),
-  CONCAT('30', LPAD(n, 8, '0')),
-  DATE_ADD('1985-01-01', INTERVAL (n % 15000) DAY),
-  CONCAT('cli', n, '@mail.com'),
-  CONCAT('+54-9-376-', LPAD(n, 4, '0')),
-  CONCAT('Av. Siempre Viva ', n),
-  mc.nombre_ciudad,
-  CONCAT('Provincia ', (((n-1)%60)+1)),
-  (((n-1)%60)+1) AS id_provincia,
-  mc.id_ciudad   AS id_ciudad,
-  300000 + (n * 200),
-  ELT((n % 5)+1,
-      (SELECT id FROM situacion_laboral WHERE codigo='Empleado'),
-      (SELECT id FROM situacion_laboral WHERE codigo='Autonomo'),
-      (SELECT id FROM situacion_laboral WHERE codigo='Empresario'),
-      (SELECT id FROM situacion_laboral WHERE codigo='Jubilado'),
-      (SELECT id FROM situacion_laboral WHERE codigo='Desempleado')),
-  IF(n % 4 = 0, ((n-1) % 60) + 1, NULL),
-  IF(n % 97 = 0, @id_cli_bloq, IF(n % 53 = 0, @id_cli_mor, @id_cli_act))
-FROM helper_seq s
-JOIN map_ciudades mc
-  ON mc.id_provincia = (((s.n - 1) % 60) + 1)
- AND mc.rn = (((s.n - 1) % 5) + 1)
-WHERE s.n <= 500;
-
--- ------------------------------------------------------------------
--- 6) Productos (60) + Histórico (≥3 por producto)  ✔
--- ------------------------------------------------------------------
-INSERT INTO productos_financieros(nombre, id_tipo, descripcion, tasa_base, monto_minimo, monto_maximo, plazo_minimo_meses, plazo_maximo_meses, requisitos, id_estado)
-SELECT
-  CONCAT('Producto ', n),
-  ELT((n % 5)+1, @id_tipo_per, @id_tipo_hip, @id_tipo_emp, @id_tipo_lea, @id_tipo_tar),
-  CONCAT('Descripción del producto ', n),
-  40 + (n % 40),
-  50000 + (n * 1000),
-  1000000 + (n * 50000),
-  6,
-  60,
-  'DNI, comprobantes, scoring',
-  IF(n % 13 = 0, (SELECT id FROM estado_producto WHERE codigo='Inactivo'),
-                 (SELECT id FROM estado_producto WHERE codigo='Activo'))
-FROM helper_seq WHERE n <= 60;
-
--- Histórico base (3 por producto) con anti-clamp Y2038
-INSERT INTO historico_tasas(
-  id_producto, tasa_anterior, tasa_nueva, fecha_cambio,
-  motivo, usuario_responsable, vigente_desde, vigente_hasta
-)
-SELECT
-  p.id_producto,
-  (p.tasa_base - 2) + (k - 1),
-  (p.tasa_base - 1) + (k - 1),
-  CASE
-    WHEN DATE_ADD('2022-01-01', INTERVAL (p.id_producto*5 + k) MONTH) > '2038-01-18 23:59:50'
-      THEN TIMESTAMP(DATE('2038-01-18'), SEC_TO_TIME(86390 - (3 - k)))
-    ELSE DATE_ADD('2022-01-01', INTERVAL (p.id_producto*5 + k) MONTH)
-  END,
-  CONCAT('Ajuste histórico #', k),
-  'seed@loader',
-  DATE_ADD('2022-01-01', INTERVAL (k - 1) * 8 MONTH),
-  CASE WHEN k = 3 THEN NULL
-       ELSE DATE_SUB(DATE_ADD('2022-01-01', INTERVAL k * 8 MONTH), INTERVAL 1 DAY)
-  END
-FROM productos_financieros p
-JOIN (SELECT 1 AS k UNION ALL SELECT 2 UNION ALL SELECT 3) ks;
-
--- ===== Parche anti-solapamiento de vigencias (2 tramos por producto) =====
-START TRANSACTION;
-SET @corte_300 := DATE_SUB(CURDATE(), INTERVAL 300 DAY);
-SET @corte_150 := DATE_SUB(CURDATE(), INTERVAL 150 DAY);
-
-UPDATE historico_tasas h
-SET h.vigente_hasta = DATE_SUB(@corte_300, INTERVAL 1 DAY)
-WHERE h.borrado_logico = 0
-  AND h.vigente_hasta IS NULL
-  AND h.vigente_desde IS NOT NULL
-  AND h.vigente_desde <= @corte_300;
-
-UPDATE historico_tasas h
-SET h.vigente_hasta = DATE_SUB(@corte_150, INTERVAL 1 DAY)
-WHERE h.borrado_logico = 0
-  AND h.vigente_hasta IS NULL
-  AND h.vigente_desde IS NOT NULL
-  AND h.vigente_desde > @corte_300
-  AND h.vigente_desde <= @corte_150;
-
-INSERT INTO historico_tasas
-(id_producto, tasa_anterior, tasa_nueva, fecha_cambio, motivo, usuario_responsable, vigente_desde, vigente_hasta)
-SELECT 
-  p.id_producto,
-  p.tasa_base - 0.40,
-  p.tasa_base - 0.20,
-  @corte_300,
-  'Ajuste por política',
-  'seed@loader',
-  @corte_300,
-  DATE_SUB(@corte_150, INTERVAL 1 DAY)
-FROM productos_financieros p
-WHERE NOT EXISTS (
-  SELECT 1 FROM historico_tasas h
-  WHERE h.id_producto = p.id_producto
-    AND h.borrado_logico = 0
-    AND COALESCE(h.vigente_hasta, '9999-12-31') >= @corte_300
-    AND COALESCE(h.vigente_desde, '0001-01-01') <= DATE_SUB(@corte_150, INTERVAL 1 DAY)
-);
-
-INSERT INTO historico_tasas
-(id_producto, tasa_anterior, tasa_nueva, fecha_cambio, motivo, usuario_responsable, vigente_desde, vigente_hasta)
-SELECT 
-  p.id_producto,
-  p.tasa_base - 0.20,
-  p.tasa_base + 0.10,
-  @corte_150,
-  'Revisión trimestral',
-  'seed@loader',
-  @corte_150,
-  NULL
-FROM productos_financieros p
-WHERE NOT EXISTS (
-  SELECT 1 FROM historico_tasas h
-  WHERE h.id_producto = p.id_producto
-    AND h.borrado_logico = 0
-    AND COALESCE(h.vigente_hasta, '9999-12-31') >= @corte_150
-    AND COALESCE(h.vigente_desde, '0001-01-01') <= '9999-12-31'
-);
-COMMIT;
--- ===== Fin parche =====
-
--- ------------------------------------------------------------------
--- 7) Garantes (300)  ✔
--- ------------------------------------------------------------------
-INSERT INTO garantes(nombre, apellido, dni, email, telefono, direccion, ingresos_declarados, relacion_cliente)
-SELECT
-  CONCAT('GarNombre', n),
-  CONCAT('GarApellido', n),
-  CONCAT('20', LPAD(n, 8, '0')),
-  CONCAT('gar', n, '@mail.com'),
-  CONCAT('+54-9-11-', LPAD(n, 4, '0')),
-  CONCAT('Calle Garante ', n),
-  400000 + (n * 300),
-  ELT((n % 4)+1, 'Familiar','Amigo','Socio','Cónyuge')
-FROM helper_seq WHERE n <= 300;
-
--- ------------------------------------------------------------------
--- 8) Solicitudes (600)  ✔
--- ------------------------------------------------------------------
-DROP TEMPORARY TABLE IF EXISTS tmp_gestores;
-CREATE TEMPORARY TABLE tmp_gestores AS
-SELECT e.id_empleado,
-       ROW_NUMBER() OVER (ORDER BY e.id_empleado) AS rn
-FROM empleados e
-WHERE e.id_cargo=@id_cargo_ac AND e.id_estado=@id_emp_act;
-
-DROP TEMPORARY TABLE IF EXISTS tmp_analistas;
-CREATE TEMPORARY TABLE tmp_analistas AS
-SELECT e.id_empleado,
-       ROW_NUMBER() OVER (ORDER BY e.id_empleado) AS rn
-FROM empleados e
-WHERE e.id_cargo=@id_cargo_an AND e.id_estado=@id_emp_act;
-
-SET @cnt_gest = (SELECT COUNT(*) FROM tmp_gestores);
-SET @cnt_an   = (SELECT COUNT(*) FROM tmp_analistas);
-
-INSERT INTO solicitudes_credito(
-  id_cliente, id_sucursal, id_empleado_gestor, id_producto,
-  monto_solicitado, plazo_meses, destino_credito, fecha_solicitud,
-  id_estado, puntaje_riesgo, id_analista, observaciones, fecha_evaluacion
-)
-SELECT
-  ((s.n - 1) % 500) + 1,
-  ((s.n - 1) % 80) + 1,
-  (SELECT g.id_empleado FROM tmp_gestores g WHERE g.rn = ((s.n - 1) % @cnt_gest) + 1),
-  ((s.n - 1) % 60) + 1,
-  150000 + (s.n * 1000),
-  6 + (s.n % 36),
-  ELT((s.n % 5)+1,'Consumo','Capital de trabajo','Refacción','Vehículo','Varios'),
-  DATE_ADD('2024-01-01', INTERVAL s.n DAY),
-  ELT((s.n % 4)+1, @id_sol_pend, @id_sol_enrev, @id_sol_aprb, @id_sol_rech),
-  600 + (s.n % 300),
-  (SELECT a.id_empleado FROM tmp_analistas a WHERE a.rn = ((s.n - 1) % @cnt_an) + 1),
-  IF(s.n % 9 = 0, 'Observación de riesgo', NULL),
-  IF(s.n % 4 IN (2,3), DATE_ADD('2024-01-01', INTERVAL s.n+5 DAY), NULL)
-FROM helper_seq s
-WHERE s.n <= 600;
-
--- ------------------------------------------------------------------
--- 9) Solicitudes-Garantes (≥600)  ✔
--- ------------------------------------------------------------------
-INSERT INTO solicitudes_garantes(id_solicitud, id_garante)
-SELECT s.id_solicitud, ((s.id_solicitud - 1) % 300) + 1
-FROM solicitudes_credito s;
-
-INSERT INTO solicitudes_garantes(id_solicitud, id_garante)
-SELECT s.id_solicitud, ((s.id_solicitud + 77) % 300) + 1
-FROM solicitudes_credito s
-WHERE s.id_solicitud % 3 = 0;
-
--- ------------------------------------------------------------------
--- 10) Créditos (todas las Aprobadas)  ✔
--- ------------------------------------------------------------------
-INSERT INTO creditos(
-  id_solicitud, id_cliente, id_producto, monto_otorgado, tasa_interes,
-  plazo_meses, fecha_inicio, fecha_finalizacion, id_estado, id_credito_refinanciado
-)
-SELECT
-  sc.id_solicitud,
-  sc.id_cliente,
-  sc.id_producto,
-  ROUND(sc.monto_solicitado * (0.9 + ((sc.id_solicitud % 21)/100.0)), 2),
-  (SELECT fn_tasa_vigente(sc.id_producto, CURDATE())),
-  sc.plazo_meses,
-  DATE_ADD('2024-02-01', INTERVAL sc.id_solicitud DAY),
-  DATE_ADD(DATE_ADD('2024-02-01', INTERVAL sc.id_solicitud DAY), INTERVAL sc.plazo_meses MONTH),
-  @id_cre_act,
-  NULL
-FROM solicitudes_credito sc
-WHERE sc.id_estado = @id_sol_aprb;
-
--- ------------------------------------------------------------------
--- 11) Generar CUOTAS para todos los créditos  ✔
--- ------------------------------------------------------------------
-DROP PROCEDURE IF EXISTS sp_seed_generar_cuotas_all;
-DELIMITER $$
-CREATE PROCEDURE sp_seed_generar_cuotas_all()
-BEGIN
-  DECLARE done INT DEFAULT 0;
-  DECLARE vid INT;
-  DECLARE cur CURSOR FOR SELECT id_credito FROM creditos;
-  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
-
-  OPEN cur;
-  read_loop: LOOP
-    FETCH cur INTO vid;
-    IF done = 1 THEN LEAVE read_loop; END IF;
-    CALL sp_generar_cuotas(vid);
-  END LOOP;
-  CLOSE cur;
-END$$
-DELIMITER ;
-CALL sp_seed_generar_cuotas_all();
-DROP PROCEDURE IF EXISTS sp_seed_generar_cuotas_all;
-
--- ==========================================================
--- 11.bis) Wrapper compatibilidad para sp_registrar_pago  ✔
--- ==========================================================
-DROP PROCEDURE IF EXISTS sp_seed_registrar_pago;
-DELIMITER $$
-CREATE PROCEDURE sp_seed_registrar_pago(
-  IN p_id_cuota BIGINT,
-  IN p_monto DECIMAL(14,2),
-  IN p_id_metodo INT,
-  IN p_nro_comp VARCHAR(50),
-  IN p_tasa_mora_diaria DECIMAL(7,5)
-)
-BEGIN
-  DECLARE v_argc INT;
-  SELECT COUNT(*) INTO v_argc
-  FROM INFORMATION_SCHEMA.PARAMETERS
-  WHERE SPECIFIC_SCHEMA = DATABASE()
-    AND SPECIFIC_NAME   = 'sp_registrar_pago';
-
-  IF v_argc = 5 THEN
-    CALL sp_registrar_pago(p_id_cuota, p_monto, p_id_metodo, p_nro_comp, p_tasa_mora_diaria);
-  ELSEIF v_argc = 6 THEN
-    CALL sp_registrar_pago(p_id_cuota, p_monto, p_id_metodo, p_nro_comp, NOW(), p_tasa_mora_diaria);
-  ELSE
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'sp_registrar_pago con aridad desconocida (esperado 5 o 6 args).';
-  END IF;
-END$$
-DELIMITER ;
-
--- ------------------------------------------------------------------
--- 12) PAGOS (parciales/completos; con y sin mora)  ✔
--- ------------------------------------------------------------------
-DELETE FROM pagos;
-DELETE FROM penalizaciones;
-
--- a) 1ª cuota “al día” (parcial)
-SET @__allow_pago_insert := 1;
-DROP TEMPORARY TABLE IF EXISTS tmp_pagos_a;
-CREATE TEMPORARY TABLE tmp_pagos_a AS
-SELECT
-  c1.id_cuota,
-  DATE_SUB(c1.fecha_vencimiento, INTERVAL 1 DAY) AS fecha_pago,
-  ROUND(c1.monto_cuota * 0.5, 2) AS monto_pagado,
-  @id_met_trf AS id_metodo,
-  CONCAT('CMP-ON-', c1.id_cuota) AS numero_comprobante
-FROM cuotas c1
-JOIN creditos cr ON cr.id_credito = c1.id_credito
-WHERE c1.numero_cuota = 1 AND (cr.id_credito % 2 = 0);
-
-INSERT INTO pagos(id_cuota, fecha_pago, monto_pagado, id_metodo, numero_comprobante)
-SELECT id_cuota, fecha_pago, monto_pagado, id_metodo, numero_comprobante
-FROM tmp_pagos_a;
-SET @__allow_pago_insert := NULL;
-DROP TEMPORARY TABLE IF EXISTS tmp_pagos_a;
-
--- b) 1ª cuota con mora (parcial)
-DROP PROCEDURE IF EXISTS sp_seed_pagar_mora_primera;
-DELIMITER $$
-CREATE PROCEDURE sp_seed_pagar_mora_primera()
-BEGIN
-  DECLARE done INT DEFAULT 0;
-  DECLARE vcuota BIGINT;
-  DECLARE cur CURSOR FOR
-    SELECT c1.id_cuota
-    FROM cuotas c1
-    JOIN creditos cr ON cr.id_credito = c1.id_credito
-    WHERE c1.numero_cuota = 1 AND (cr.id_credito % 2 = 1);
-  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
-
-  OPEN cur;
-  read_loop: LOOP
-    FETCH cur INTO vcuota;
-    IF done = 1 THEN LEAVE read_loop; END IF;
-    CALL sp_seed_registrar_pago(
-      vcuota,
-      (SELECT ROUND(monto_cuota*0.6,2) FROM cuotas WHERE id_cuota=vcuota),
-      @id_met_efv,
-      CONCAT('CMP-LT-', vcuota),
-      0.0005
-    );
-  END LOOP;
-  CLOSE cur;
-END$$
-DELIMITER ;
-CALL sp_seed_pagar_mora_primera();
-DROP PROCEDURE IF EXISTS sp_seed_pagar_mora_primera;
-
--- c) 2ª cuota al día (completo) ~30%
-SET @__allow_pago_insert := 1;
-DROP TEMPORARY TABLE IF EXISTS tmp_pagos_c;
-CREATE TEMPORARY TABLE tmp_pagos_c AS
-SELECT
-  c2.id_cuota,
-  DATE_SUB(c2.fecha_vencimiento, INTERVAL 2 DAY) AS fecha_pago,
-  c2.monto_cuota AS monto_pagado,
-  @id_met_deb AS id_metodo,
-  CONCAT('CMP-2-', c2.id_cuota) AS numero_comprobante
-FROM cuotas c2
-JOIN creditos cr ON cr.id_credito = c2.id_credito
-WHERE c2.numero_cuota = 2 AND (cr.id_credito % 3 = 0);
-
-INSERT INTO pagos(id_cuota, fecha_pago, monto_pagado, id_metodo, numero_comprobante)
-SELECT id_cuota, fecha_pago, monto_pagado, id_metodo, numero_comprobante
-FROM tmp_pagos_c;
-SET @__allow_pago_insert := NULL;
-DROP TEMPORARY TABLE IF EXISTS tmp_pagos_c;
-
--- ------------------------------------------------------------------
--- 13) Evaluaciones de seguimiento (200)  ✔
--- ------------------------------------------------------------------
-SET @id_analista_demo = (
-  SELECT e.id_empleado
-  FROM empleados e
-  WHERE e.id_cargo=@id_cargo_an AND e.id_estado=@id_emp_act
-  ORDER BY e.id_empleado LIMIT 1
-);
-
-INSERT INTO evaluaciones_seguimiento(id_cliente, id_credito, id_analista, id_comp_pago, nivel_endeudamiento, puntaje_actualizado, observaciones, recomendaciones)
-SELECT
-  cr.id_cliente,
-  cr.id_credito,
-  @id_analista_demo,
-  ELT((cr.id_credito % 5)+1,
-      (SELECT id FROM comp_pago WHERE codigo='Excelente'),
-      (SELECT id FROM comp_pago WHERE codigo='Bueno'),
-      (SELECT id FROM comp_pago WHERE codigo='Regular'),
-      (SELECT id FROM comp_pago WHERE codigo='Malo'),
-      (SELECT id FROM comp_pago WHERE codigo='Muy_Malo')),
-  ROUND( ( (SELECT COALESCE(SUM(cu.monto_cuota - cu.monto_pagado),0) FROM cuotas cu WHERE cu.id_credito=cr.id_credito)
-          / GREATEST(1,(SELECT ingresos_declarados FROM clientes WHERE id_cliente=cr.id_cliente)) ) * 100, 2),
-  600 + (cr.id_credito % 300),
-  IF(cr.id_credito % 11=0, 'Revisar comportamiento reciente', NULL),
-  IF(cr.id_credito % 7=0, 'Aumentar recordatorios de pago', 'Mantener monitoreo')
-FROM creditos cr
-WHERE cr.id_credito <= 200;
-
--- ------------------------------------------------------------------
--- 14) Relación Campaña-Producto (180)  ✔
--- ------------------------------------------------------------------
-SET @camp_total := (SELECT COUNT(*) FROM campanias_promocionales);
-SET @prod_total := (SELECT COUNT(*) FROM productos_financieros);
-
-DROP TEMPORARY TABLE IF EXISTS map_campanias;
-CREATE TEMPORARY TABLE map_campanias AS
-SELECT ROW_NUMBER() OVER (ORDER BY id_campania) AS rn, id_campania
-FROM campanias_promocionales;
-
-DROP TEMPORARY TABLE IF EXISTS map_productos;
-CREATE TEMPORARY TABLE map_productos AS
-SELECT ROW_NUMBER() OVER (ORDER BY id_producto) AS rn, id_producto
-FROM productos_financieros;
-
-INSERT INTO campanias_productos(id_campania, id_producto)
-SELECT mc.id_campania, mp.id_producto
-FROM (
-  SELECT n,
-         ((n - 1) % @camp_total) + 1 AS rn_camp,
-         ( (((n - 1) % @prod_total) * 7) + (FLOOR((n - 1)/@prod_total) * 13) )
-           % @prod_total + 1 AS rn_prod
-  FROM helper_seq
-  WHERE n <= 180
-) t
-JOIN map_campanias mc ON mc.rn = t.rn_camp
-JOIN map_productos  mp ON mp.rn = t.rn_prod;
-
--- ------------------------------------------------------------------
--- 15) Asignación de campañas a clientes existentes + Reconteo  ✔
--- ------------------------------------------------------------------
-UPDATE clientes cl
-JOIN creditos cr ON cr.id_cliente = cl.id_cliente
-LEFT JOIN campanias_promocionales cp ON cp.id_campania = ((cr.id_credito - 1) % 60) + 1
-SET cl.id_campania_ingreso = cp.id_campania
-WHERE cl.id_campania_ingreso IS NULL;
-
-UPDATE clientes cl
-LEFT JOIN campanias_promocionales cp ON cp.id_campania = ((cl.id_cliente - 1) % 60) + 1
-SET cl.id_campania_ingreso = cp.id_campania
-WHERE cl.id_campania_ingreso IS NULL;
-
--- Recalcular contador de clientes captados
-UPDATE campanias_promocionales cp
-LEFT JOIN (
-  SELECT id_campania_ingreso AS id_campania, COUNT(*) AS captados
-  FROM clientes
-  WHERE id_campania_ingreso IS NOT NULL
-  GROUP BY id_campania_ingreso
-) x ON x.id_campania = cp.id_campania
-SET cp.clientes_captados = COALESCE(x.captados, 0);
-
--- ------------------------------------------------------------------
--- 15.bis) Campañas ↔ Clientes (trazabilidad N:M)  ✔
--- ------------------------------------------------------------------
-DROP TEMPORARY TABLE IF EXISTS tmp_cli_camp;
-CREATE TEMPORARY TABLE tmp_cli_camp AS
-SELECT
-  cl.id_cliente,
-  ((cl.id_cliente - 1) % 60) + 1 AS id_campania_base,
-  DATE_ADD('2024-03-01', INTERVAL ((cl.id_cliente - 1) % 240) DAY) AS fecha_base
-FROM clientes cl;
-
-INSERT INTO campanias_clientes (id_campania, id_cliente, canal, resultado, fecha_contacto)
-SELECT
-  id_campania_base,
-  id_cliente,
-  ELT( (id_cliente % 4)+1, 'Web','Sucursal','Email','WhatsApp'),
-  ELT( (id_cliente % 3)+1, 'Convirtio','No','No'),
-  fecha_base
-FROM tmp_cli_camp;
-
-INSERT INTO campanias_clientes (id_campania, id_cliente, canal, resultado, fecha_contacto)
-SELECT
-  ((id_campania_base + 7 - 1) % 60) + 1,
-  id_cliente,
-  ELT( ((id_cliente+1) % 4)+1, 'Web','Sucursal','Email','WhatsApp'),
-  ELT( ((id_cliente+1) % 3)+1, 'Convirtio','No','No'),
-  DATE_ADD(fecha_base, INTERVAL (15 + (id_cliente % 31)) DAY)
-FROM tmp_cli_camp
-WHERE id_cliente % 2 = 0;
-
-INSERT INTO campanias_clientes (id_campania, id_cliente, canal, resultado, fecha_contacto)
-SELECT
-  ((id_campania_base + 13 - 1) % 60) + 1,
-  id_cliente,
-  ELT( ((id_cliente+2) % 4)+1, 'Web','Sucursal','Email','WhatsApp'),
-  ELT( ((id_cliente+2) % 3)+1, 'Convirtio','No','No'),
-  DATE_ADD(fecha_base, INTERVAL (60 + (id_cliente % 45)) DAY)
-FROM tmp_cli_camp
-WHERE id_cliente % 10 IN (0,3,7);
-
-DROP TEMPORARY TABLE IF EXISTS tmp_cli_camp;
-
--- ------------------------------------------------------------------
--- 16) Ajustes de estados (consistencia)  ✔
--- ------------------------------------------------------------------
-UPDATE cuotas cu
-JOIN (SELECT id AS id_pagada FROM estado_cuota WHERE codigo='Pagada') d1
-JOIN (SELECT id AS id_pag_mora FROM estado_cuota WHERE codigo='Pagada_Con_Mora') d2
-JOIN (SELECT id AS id_vencida FROM estado_cuota WHERE codigo='Vencida') d3
-JOIN (SELECT id AS id_pend FROM estado_cuota WHERE codigo='Pendiente') d4
-SET cu.id_estado = CASE
-  WHEN cu.monto_pagado >= cu.monto_cuota AND CURDATE() > cu.fecha_vencimiento THEN d2.id_pag_mora
-  WHEN cu.monto_pagado >= cu.monto_cuota THEN d1.id_pagada
-  WHEN CURDATE() > cu.fecha_vencimiento THEN d3.id_vencida
-  ELSE d4.id_pend
-END
-WHERE cu.borrado_logico = 0;
-
-UPDATE creditos c
-JOIN (
-  SELECT id_credito,
-         SUM(id_estado IN ((SELECT id FROM estado_cuota WHERE codigo='Pagada'),
-                           (SELECT id FROM estado_cuota WHERE codigo='Pagada_Con_Mora'))) pagadas,
-         SUM(id_estado = (SELECT id FROM estado_cuota WHERE codigo='Vencida')) vencidas,
-         COUNT(*) total
-  FROM cuotas WHERE borrado_logico=0 GROUP BY id_credito
-) x ON x.id_credito=c.id_credito
-JOIN (SELECT id AS id_act FROM estado_credito WHERE codigo='Activo') ec_act
-JOIN (SELECT id AS id_mor FROM estado_credito WHERE codigo='En_Mora') ec_mor
-JOIN (SELECT id AS id_pag FROM estado_credito WHERE codigo='Pagado') ec_pag
-SET c.id_estado = CASE
-  WHEN x.pagadas = x.total THEN ec_pag.id_pag
-  WHEN x.vencidas > 0 THEN ec_mor.id_mor
-  ELSE ec_act.id_act
-END
-WHERE c.borrado_logico=0;
-
--- ------------------------------------------------------------------
--- 17) Conteo por tabla (verificación)  ✔
--- ------------------------------------------------------------------
-SELECT 'provincias' AS tabla, COUNT(*) AS filas FROM provincias
-UNION ALL SELECT 'ciudades', COUNT(*) FROM ciudades
-UNION ALL SELECT 'sucursales', COUNT(*) FROM sucursales
-UNION ALL SELECT 'empleados', COUNT(*) FROM empleados
-UNION ALL SELECT 'clientes', COUNT(*) FROM clientes
-UNION ALL SELECT 'productos_financieros', COUNT(*) FROM productos_financieros
-UNION ALL SELECT 'historico_tasas', COUNT(*) FROM historico_tasas
-UNION ALL SELECT 'garantes', COUNT(*) FROM garantes
-UNION ALL SELECT 'solicitudes_credito', COUNT(*) FROM solicitudes_credito
-UNION ALL SELECT 'solicitudes_garantes', COUNT(*) FROM solicitudes_garantes
-UNION ALL SELECT 'creditos', COUNT(*) FROM creditos
-UNION ALL SELECT 'cuotas', COUNT(*) FROM cuotas
-UNION ALL SELECT 'pagos', COUNT(*) FROM pagos
-UNION ALL SELECT 'penalizaciones', COUNT(*) FROM penalizaciones
-UNION ALL SELECT 'evaluaciones_seguimiento', COUNT(*) FROM evaluaciones_seguimiento
-UNION ALL SELECT 'campanias_promocionales', COUNT(*) FROM campanias_promocionales
-UNION ALL SELECT 'campanias_productos', COUNT(*) FROM campanias_productos
-UNION ALL SELECT 'campanias_clientes', COUNT(*) FROM campanias_clientes
-UNION ALL SELECT 'estado_sucursal', COUNT(*) FROM estado_sucursal
-UNION ALL SELECT 'cargo_empleado', COUNT(*) FROM cargo_empleado
-UNION ALL SELECT 'estado_empleado', COUNT(*) FROM estado_empleado
-UNION ALL SELECT 'estado_cliente', COUNT(*) FROM estado_cliente
-UNION ALL SELECT 'situacion_laboral', COUNT(*) FROM situacion_laboral
-UNION ALL SELECT 'tipo_producto', COUNT(*) FROM tipo_producto
-UNION ALL SELECT 'estado_producto', COUNT(*) FROM estado_producto
-UNION ALL SELECT 'estado_campania', COUNT(*) FROM estado_campania
-UNION ALL SELECT 'estado_solicitud', COUNT(*) FROM estado_solicitud
-UNION ALL SELECT 'estado_credito', COUNT(*) FROM estado_credito
-UNION ALL SELECT 'estado_cuota', COUNT(*) FROM estado_cuota
-UNION ALL SELECT 'metodo_pago', COUNT(*) FROM metodo_pago
-UNION ALL SELECT 'estado_penalizacion', COUNT(*) FROM estado_penalizacion
-UNION ALL SELECT 'comp_pago', COUNT(*) FROM comp_pago;
-
--- Limpieza helper
-DROP TABLE IF EXISTS helper_seq;
-DROP TEMPORARY TABLE IF EXISTS map_ciudades;
-
-SET sql_safe_updates = 1;
+-- campanias_clientes
+INSERT INTO campanias_clientes
+  (id_campania, id_cliente, canal, resultado, fecha_contacto)
+VALUES
+  ( 1,  1, 'Email',           'Convirtio', '2023-01-15'),
+  ( 1,  2, 'WhatsApp',        'No',        '2023-01-18'),
+  ( 1,  3, 'Llamada',         'Convirtio', '2023-01-22'),
+  ( 2,  4, 'SMS',             'No',        '2023-02-05'),
+  ( 2,  5, 'Email',           'Convirtio', '2023-02-10'),
+  ( 2,  6, 'Redes_Sociales',  'No',        '2023-02-18'),
+  ( 3,  7, 'Sucursal',        'Convirtio', '2023-03-01'),
+  ( 3,  8, 'Web',             'No',        '2023-03-06'),
+  ( 3,  9, 'Email',           'No',        '2023-03-12'),
+  ( 4, 10, 'WhatsApp',        'Convirtio', '2023-03-20'),
+  ( 4, 11, 'Llamada',         'No',        '2023-03-25'),
+  ( 4, 12, 'SMS',             'No',        '2023-03-30'),
+  ( 1, 13, 'Redes_Sociales',  'Convirtio', '2023-04-05'),
+  ( 2, 14, 'Web',             'No',        '2023-04-10'),
+  ( 3, 15, 'Email',           'Convirtio', '2023-04-15'),
+  ( 4, 16, 'Sucursal',        'No',        '2023-04-22'),
+  ( 1, 17, 'WhatsApp',        'No',        '2023-05-02'),
+  ( 2, 18, 'Llamada',         'Convirtio', '2023-05-08'),
+  ( 3, 19, 'SMS',             'No',        '2023-05-15'),
+  ( 4, 20, 'Web',             'Convirtio', '2023-05-22'),
+  ( 1, 21, 'Email',           'Convirtio', '2023-01-25'),
+  ( 3, 22, 'Llamada',         'Convirtio', '2023-03-28'),
+  ( 1, 23, 'Redes_Sociales',  'Convirtio', '2023-04-18'),
+  ( 5, 10, 'Email',           'No',        '2024-01-10'),
+  ( 5, 11, 'WhatsApp',        'Convirtio', '2024-01-18'),
+  ( 6, 12, 'Redes_Sociales',  'No',        '2024-01-25'),
+  ( 6, 13, 'Sucursal',        'No',        '2024-02-02'),
+  ( 6, 14, 'Web',             'Convirtio', '2024-02-09'),
+  ( 7, 21, 'Email',           'No',        '2024-02-15'),
+  ( 7, 22, 'Llamada',         'Convirtio', '2024-02-22'),
+  ( 7, 23, 'WhatsApp',        'No',        '2024-03-01'),
+  ( 8, 24, 'SMS',             'No',        '2024-03-08'),
+  ( 8, 25, 'Redes_Sociales',  'Convirtio', '2024-03-16'),
+  ( 8, 26, 'Web',             'No',        '2024-03-23'),
+  ( 5, 27, 'Email',           'No',        '2024-04-02'),
+  ( 5, 28, 'Sucursal',        'Convirtio', '2024-04-09'),
+  ( 6, 29, 'WhatsApp',        'No',        '2024-04-17'),
+  ( 6, 30, 'Llamada',         'No',        '2024-04-25'),
+  ( 7, 31, 'Email',           'Convirtio', '2024-05-03'),
+  ( 7, 32, 'Web',             'No',        '2024-05-11'),
+  ( 8, 33, 'Redes_Sociales',  'No',        '2024-05-20'),
+  ( 8, 34, 'SMS',             'Convirtio', '2024-05-28'),
+  ( 5, 35, 'WhatsApp',        'No',        '2024-06-05'),
+  ( 7, 36, 'Email',           'Convirtio', '2024-05-15'),
+  ( 7, 37, 'Email',           'Convirtio', '2024-05-22'),
+  ( 8, 38, 'WhatsApp',        'Convirtio', '2024-03-20'),
+  ( 9, 31, 'Email',           'No',        '2025-09-01'),
+  ( 9, 31, 'WhatsApp',        'No',        '2025-09-20'),
+  (10, 32, 'Llamada',         'No',        '2025-08-25'),
+  (10, 32, 'WhatsApp',        'No',        '2025-09-30'),
+  ( 9, 33, 'SMS',             'No',        '2025-09-10'),
+  ( 9, 33, 'Email',           'No',        '2025-10-05'),
+  (10, 34, 'Web',             'No',        '2025-08-28'),
+  (10, 34, 'Redes_Sociales',  'No',        '2025-10-10'),
+  ( 9, 35, 'Llamada',         'No',        '2025-09-03'),
+  ( 9, 35, 'Email',           'No',        '2025-10-12'),
+  (11, 36, 'Email',           'Convirtio', '2025-06-15'),
+  (11, 37, 'Web',             'Convirtio', '2025-06-20'),
+  (11, 38, 'Sucursal',        'Convirtio', '2025-07-05'),
+  (12, 39, 'WhatsApp',        'Convirtio', '2025-07-18'),
+  (12, 40, 'Llamada',         'Convirtio', '2025-07-25'),
+  (12, 41, 'SMS',             'No',        '2025-08-02'),
+  (11, 42, 'Redes_Sociales',  'No',        '2025-08-10'),
+  ( 9, 43, 'Email',           'Convirtio', '2025-09-07'),
+  (10, 44, 'WhatsApp',        'Convirtio', '2025-09-14'),
+  ( 9, 45, 'Sucursal',        'No',        '2025-10-01'),
+  (11, 46, 'Email',           'Convirtio', '2025-06-25'),
+  (11, 47, 'Email',           'Convirtio', '2025-06-28'),
+  ( 9, 48, 'Email',           'Convirtio', '2025-09-15'),
+  ( 9, 49, 'Email',           'Convirtio', '2025-09-21'),
+  (10, 50, 'WhatsApp',        'Convirtio', '2025-09-25');
