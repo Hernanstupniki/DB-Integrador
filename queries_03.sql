@@ -1,5 +1,5 @@
 -- Sistema de Gestion de Creditos y Cobranzas
--- consultas realizadas de Base de Datos: gestion_creditos
+-- Consultas realizadas de Base de Datos: gestion_creditos
 
 
 USE gestion_creditos;
