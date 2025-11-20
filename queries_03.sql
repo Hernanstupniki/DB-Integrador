@@ -248,7 +248,7 @@ GROUP BY cl.id_cliente, cliente, ec.codigo
 ORDER BY deuda DESC;
 
 
--- Q15. Sucursales con mayor monto vencido
+-- Q14. Sucursales con mayor monto vencido
 WITH vencido AS (
   SELECT
     s.id_sucursal, s.nombre AS sucursal,
@@ -270,7 +270,7 @@ FROM (
 WHERE rk <= 3
 ORDER BY rk;
 
--- Q16. Cambios de tasa ultimos 12 meses (no solapadas)
+-- Q15. Cambios de tasa ultimos 12 meses (no solapadas)
 WITH mov AS (
   SELECT
     h.id_producto,
@@ -317,7 +317,7 @@ LEFT JOIN ultimo_delta ud ON ud.id_producto = p.id_producto
 WHERE p.borrado_logico = 0
 ORDER BY cambios_12m DESC, p.id_producto;
 
--- Q17. Ingresos estimados por intereses (mes actual)
+-- Q16. Ingresos estimados por intereses (mes actual)
 SELECT
   DATE_FORMAT(CURDATE(), '%Y-%m') AS periodo,
   ROUND(SUM(cu.monto_interes), 2) AS intereses_mes
@@ -326,7 +326,7 @@ WHERE cu.borrado_logico = 0
   AND YEAR(cu.fecha_vencimiento) = YEAR(CURDATE())
   AND MONTH(cu.fecha_vencimiento) = MONTH(CURDATE());
 
--- Q18. Distribucion de plazos
+-- Q17. Distribucion de plazos
 SELECT
   c.plazo_meses,
   COUNT(*) AS creditos
@@ -335,7 +335,7 @@ WHERE c.borrado_logico = 0
 GROUP BY c.plazo_meses
 ORDER BY c.plazo_meses;
 
--- Q19. Sucursales con mayor volumen otorgado
+-- Q18. Sucursales con mayor volumen otorgado
 WITH tot AS (
   SELECT
     s.id_sucursal, s.nombre,
@@ -356,7 +356,7 @@ WHERE (
 ) < 15
 ORDER BY t1.total_otorgado DESC, t1.id_sucursal;
 
--- Q20. Metodologias de pago mas usadas
+-- Q19. Metodologias de pago mas usadas
 SELECT
   mp.codigo AS metodo_pago,
   COUNT(*) AS cant
@@ -368,10 +368,10 @@ ORDER BY cant DESC;
 
 
 
--- CONSULTAS DE MARKETING (22–30)
+-- Consultas de marketing
 
 
--- Q21. Conversion por canal (global y 90 dias)
+-- Q20. Conversion por canal (global y 90 dias)
 SELECT
   canal,
   COUNT(*)                                 AS contactos,
@@ -383,7 +383,7 @@ FROM campanias_clientes
 GROUP BY canal
 ORDER BY conv_rate_pct DESC, contactos DESC;
 
--- Q22. Funnel por campaña
+-- Q21. Funnel por campaña
 SELECT
   cp.id_campania,
   cp.nombre,
@@ -397,7 +397,7 @@ WHERE cp.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre
 ORDER BY conversiones DESC;
 
--- Q23. ROAS y CPA por campaña
+-- Q22. ROAS y CPA por campaña
 SELECT
   cp.id_campania,
   cp.nombre,
@@ -416,7 +416,7 @@ WHERE cp.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre, cp.inversion_realizada
 ORDER BY roas DESC, ingreso_atr DESC;
 
--- Q24. Atribucion "ultimo toque" (campanias_clientes)
+-- Q23. Atribucion "ultimo toque" (campanias_clientes)
 WITH ult AS (
   SELECT
     id_cliente,
@@ -440,7 +440,7 @@ LEFT JOIN creditos cr ON cr.id_cliente = u.id_cliente AND cr.borrado_logico=0
 GROUP BY cp.id_campania, cp.nombre
 ORDER BY monto_otorgado_last_touch DESC;
 
--- Q25. Serie mensual de conversiones por canal
+-- Q24. Serie mensual de conversiones por canal
 SELECT
   DATE_FORMAT(fecha_contacto,'%Y-%m') AS yymm,
   canal,
@@ -449,7 +449,7 @@ FROM campanias_clientes
 GROUP BY yymm, canal
 ORDER BY yymm DESC, conversiones DESC;
 
--- Q26. Prospectos para retargeting (≥2 contactos 90d sin conversion) – Top 200
+-- Q25. Prospectos para retargeting (≥2 contactos 90d sin conversion) – Top 200
 WITH params AS (
   SELECT COALESCE(MAX(fecha_contacto), CURDATE()) base_ref FROM campanias_clientes
 ),
@@ -471,7 +471,7 @@ FROM base
 ORDER BY convs_90d DESC, contactos_90d DESC;
 
 
--- Q27. Tasa de aprobacion por analista
+-- Q26. Tasa de aprobacion por analista
 SELECT
   e.id_empleado,
   CONCAT(e.nombre,' ',e.apellido) AS analista,
@@ -486,7 +486,7 @@ GROUP BY e.id_empleado, analista
 HAVING total_eval>0
 ORDER BY tasa_aprob_pct DESC, aprobadas DESC;
 
--- Q28. Cohorte por mes de solicitud → tasa de aprobacion
+-- Q27. Cohorte por mes de solicitud → tasa de aprobacion
 SELECT
   DATE_FORMAT(sc.fecha_solicitud,'%Y-%m') AS cohorte,
   COUNT(*) AS solicitudes,
@@ -497,7 +497,7 @@ WHERE sc.borrado_logico=0
 GROUP BY cohorte
 ORDER BY cohorte DESC;
 
--- Q29. Correlacion simple: inversion vs creditos atribuidos
+-- Q28. Correlacion simple: inversion vs creditos atribuidos
 SELECT
   cp.id_campania,
   cp.nombre,
