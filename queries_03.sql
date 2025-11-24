@@ -51,7 +51,7 @@ WHERE s.borrado_logico = 0
 GROUP BY s.id_sucursal, s.nombre
 ORDER BY mora_promedio_dias DESC;
 
--- Q3. Deuda vigente por cliente – Top 50 (sin LIMIT, con subconsulta para ranking)
+-- Q3. Deuda vigente por cliente
 WITH deuda AS (
   SELECT
     cl.id_cliente,
@@ -446,7 +446,7 @@ FROM campanias_clientes
 GROUP BY yymm, canal
 ORDER BY yymm DESC, conversiones DESC;
 
--- Q25. Prospectos para retargeting (≥2 contactos 90d sin conversion) – Top 200
+-- Q25. Prospectos para retargeting (≥2 contactos 90d sin conversion)
 WITH params AS (
   SELECT COALESCE(MAX(fecha_contacto), CURDATE()) base_ref FROM campanias_clientes
 ),
