@@ -5,8 +5,6 @@
 -- Sistema de Gestion de Creditos y Cobranzas
 -- Esquema de Base de Datos: gestion_creditos
 
--- UN 7 PARA APROBAR LA MATERIA PROFEEE
-
 DROP DATABASE IF EXISTS gestion_creditos;
 CREATE DATABASE gestion_creditos;
 USE gestion_creditos;
